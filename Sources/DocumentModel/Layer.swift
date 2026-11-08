@@ -33,6 +33,7 @@ public enum LayerContent: Codable, Equatable {
     case group([Layer])
     case shape(ShapeContent)
     case image(ImageContent)
+    case text(TextContent)
 }
 
 public struct Layer: Codable, Equatable, Identifiable {
@@ -74,6 +75,15 @@ public struct Layer: Codable, Equatable, Identifiable {
             return r
         case .image(let i):
             return Rect2(x: 0, y: 0, width: i.size.width, height: i.size.height)
+        case .text(let t):
+            guard var r = t.outline.bounds else {
+                // Not laid out yet: use the block size so the layer can still be found and selected.
+                return t.size.width > 0 && t.size.height > 0 ? Rect2(x: 0, y: 0, width: t.size.width, height: t.size.height) : nil
+            }
+            if let w = t.style.stroke?.width {
+                r = Rect2(x: r.x - w / 2, y: r.y - w / 2, width: r.width + w, height: r.height + w)
+            }
+            return r
         case .group(let kids):
             var out: Rect2?
             for k in kids where k.isVisible {

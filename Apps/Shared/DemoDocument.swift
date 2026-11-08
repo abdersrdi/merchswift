@@ -54,6 +54,14 @@ enum DemoDocument {
         layers.append(Layer(name: "Star", content: .shape(ShapeContent(path: PathData(elements: star), fill: RGBA(1, 0.86, 0.2),
                             stroke: Stroke(color: RGBA(0.1, 0.1, 0.12), width: 2.5))), transform: .translation(150, 105)))
 
+        // Text: Arabic and French, laid out later by the shaper (the outlines start empty).
+        layers.append(Layer(name: "Title", content: .text(TextContent(
+            text: "Star ستار", style: TextStyle(family: "Cairo", weight: 800, size: 15, alignment: .center, fill: RGBA(0.1, 0.1, 0.4)), boxWidth: 240)),
+            transform: .translation(30, 6)))
+        layers.append(Layer(name: "Caption", content: .text(TextContent(
+            text: "Café & Co. · مقهى النجوم", style: TextStyle(family: "Amiri", size: 10, alignment: .center), boxWidth: 240)),
+            transform: .translation(30, 378)))
+
         for i in 0..<extraLayers {
             let x = Double((i * 37) % 260) + 10, y = Double((i * 53) % 360) + 10
             layers.append(Layer(name: "Extra \(i + 1)", content: .shape(ShapeContent(

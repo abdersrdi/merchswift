@@ -213,6 +213,10 @@ public struct Document: Codable, Equatable {
                 }
             }
             return false
+        case .text:
+            // Text is picked anywhere in its box, so a thin letter is easy to hit.
+            guard let b = l.localBounds else { return false }
+            return Rect2(x: b.x - tolerance, y: b.y - tolerance, width: b.width + 2 * tolerance, height: b.height + 2 * tolerance).contains(p)
         case .group:
             return false
         }

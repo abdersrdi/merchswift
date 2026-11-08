@@ -43,6 +43,7 @@ extension ToolController {
         switch key {
         case "v": tool = .select; return true
         case "p": tool = .pen; return true
+        case "t": tool = .text; return true
         default: return false
         }
     }
@@ -259,4 +260,45 @@ extension CubicBezier {
 
 extension RGBA {
     func withAlpha(_ a: Double) -> RGBA { RGBA(r, g, b, a) }
+}
+
+
+extension ToolController {
+    // MARK: Text
+
+    func textDown(_ e: PointerEvent) {
+        // Clicking existing text selects it for editing instead of starting a new one.
+        if let hit = document.hitTest(e.canvas, tolerance: mm(4)).flatMap({ rootAncestor(of: $0) }),
+           case .text? = document.layer(id: hit)?.content {
+            selection = [hit]
+            tool = .select
+            return
+        }
+        guard let shaper = textShaper else { return }
+        var content = TextContent(text: "Text", style: newTextStyle)
+        content.reshape(using: shaper)
+        let layer = Layer(name: "Text", content: .text(content), transform: .translation(e.canvas.x, e.canvas.y))
+        store.perform("Add text") { $0.insert(layer) }
+        selection = [layer.id]
+        tool = .select
+    }
+
+    /// Changes a text layer's words or style and lays it out again. Typing and sliders merge into one undo step.
+    public func updateText(_ id: UUID, _ change: (inout TextContent) -> Void) {
+        guard let shaper = textShaper else { return }
+        store.perform("Edit text", coalesceKey: "text-\(id.uuidString)") { doc in
+            doc.update(id: id) { layer in
+                guard case .text(var t) = layer.content else { return }
+                change(&t)
+                t.reshape(using: shaper)
+                layer.content = .text(t)
+            }
+        }
+    }
+
+    /// The selected text layer's content, if exactly one text layer is selected.
+    public var selectedText: (id: UUID, content: TextContent)? {
+        guard selection.count == 1, let id = selection.first, case .text(let t)? = document.layer(id: id)?.content else { return nil }
+        return (id, t)
+    }
 }

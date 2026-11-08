@@ -12,7 +12,7 @@ public struct Modifiers: OptionSet {
 }
 
 public enum Tool: String, CaseIterable {
-    case select, pen
+    case select, pen, text
 }
 
 public enum PointerKind { case mouse, touch, pencil }

@@ -42,6 +42,11 @@ public final class ToolController {
     public internal(set) var snapLines: [SnapLine] = []
     public internal(set) var marquee: Rect2?
 
+    /// Lays text out. Set by the app (Core Text); without it the text tool does nothing.
+    public var textShaper: TextShaping?
+    /// The style new text starts with.
+    public var newTextStyle = TextStyle()
+
     // Pen state.
     var pen: PenPath?
     var penHover: Point?
@@ -135,6 +140,7 @@ public final class ToolController {
         switch tool {
         case .select: selectDown(e)
         case .pen: penDown(e)
+        case .text: textDown(e)
         }
         notify()
     }
@@ -143,6 +149,7 @@ public final class ToolController {
         switch tool {
         case .select: selectDragged(e)
         case .pen: penDragged(e)
+        case .text: break
         }
         notify()
     }
@@ -151,6 +158,7 @@ public final class ToolController {
         switch tool {
         case .select: selectUp(e)
         case .pen: penUp(e)
+        case .text: break
         }
         interaction = nil
         snapLines = []

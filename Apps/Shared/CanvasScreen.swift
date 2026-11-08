@@ -2,6 +2,7 @@ import DocumentModel
 import Editor
 import Renderer
 import SwiftUI
+import Typography
 
 final class CanvasController: ObservableObject {
     #if canImport(MetalKit)
@@ -18,9 +19,15 @@ final class EditorModel: ObservableObject {
     let tools: ToolController
     private var tokens: [UUID] = []
 
+    let shaper = CoreTextShaper()
+
     init(document: Document) {
-        store = DocumentStore(document: document)
+        FontLibrary.shared.registerBundledFonts()
+        var doc = document
+        doc.reshapeAllText(using: shaper)
+        store = DocumentStore(document: doc)
         tools = ToolController(store: store)
+        tools.textShaper = shaper
         tokens.append(tools.observe { [weak self] in DispatchQueue.main.async { self?.objectWillChange.send() } })
         tokens.append(store.observe { [weak self] in DispatchQueue.main.async { self?.objectWillChange.send() } })
     }
@@ -67,10 +74,11 @@ struct CanvasScreen: View {
                 Picker("Tool", selection: Binding(get: { tools.tool }, set: { tools.tool = $0 })) {
                     Label("Select", systemImage: "cursorarrow").tag(Tool.select)
                     Label("Pen", systemImage: "pencil.tip").tag(Tool.pen)
+                    Label("Text", systemImage: "textformat").tag(Tool.text)
                 }
                 .pickerStyle(.segmented)
                 .labelStyle(.iconOnly)
-                .frame(width: 110)
+                .frame(width: 150)
 
                 if tools.tool == .pen {
                     Button { tools.finishPath() } label: { Label("Finish path", systemImage: "checkmark") }
@@ -138,6 +146,7 @@ struct Inspector: View {
                     Slider(value: Binding(get: { opacity }, set: { tools.setOpacity($0) }), in: 0...1)
                 }
             }
+            if let text = tools.selectedText { TextInspector(tools: tools, id: text.id, content: text.content) }
             Picker("Blend", selection: Binding(get: { single?.blendMode ?? .normal }, set: { tools.setBlendMode($0) })) {
                 ForEach(BlendMode.allCases, id: \.self) { Text($0.rawValue.capitalized).tag($0) }
             }
@@ -173,6 +182,74 @@ struct Inspector: View {
     private func apply() {
         guard let nx = Double(x), let ny = Double(y), let nw = Double(w), let nh = Double(h), nw > 0, nh > 0 else { load(); return }
         tools.setFrame(Rect2(x: nx, y: ny, width: nw, height: nh))
+    }
+}
+
+/// Text settings: the words, the font, and the typographic controls.
+struct TextInspector: View {
+    let tools: ToolController
+    let id: UUID
+    let content: TextContent
+
+    private let optional: [(String, String)] = [("dlig", "Discretionary ligatures"), ("swsh", "Swashes"), ("smcp", "Small caps"),
+                                                 ("ss01", "Style set 1"), ("tnum", "Tabular figures")]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            TextEditor(text: Binding(get: { content.text }, set: { v in tools.updateText(id) { $0.text = v } }))
+                .font(.body)
+                .frame(height: 70)
+                .overlay(RoundedRectangle(cornerRadius: 6).stroke(.secondary.opacity(0.4)))
+
+            Picker("Font", selection: Binding(get: { content.style.family }, set: { v in tools.updateText(id) { $0.style.family = v } })) {
+                ForEach(FontLibrary.shared.families, id: \.name) { f in
+                    Text(f.supportsArabic ? "\(f.name)  ع" : f.name).tag(f.name)
+                }
+            }
+            .pickerStyle(.menu)
+
+            slider("Weight", value: content.style.weight, range: 100...900) { v in tools.updateText(id) { $0.style.weight = (v / 100).rounded() * 100 } }
+            slider("Size", value: content.style.size, range: 2...120) { v in tools.updateText(id) { $0.style.size = v } }
+            slider("Spacing", value: content.style.tracking, range: -50...400) { v in tools.updateText(id) { $0.style.tracking = v } }
+            slider("Lines", value: content.style.lineSpacing, range: 0.6...2.5) { v in tools.updateText(id) { $0.style.lineSpacing = v } }
+            slider("Bend", value: bend, range: -180...180) { v in
+                tools.updateText(id) { $0.style.curve = abs(v) < 1 ? nil : .arc(degrees: v) }
+            }
+
+            Picker("Align", selection: Binding(get: { content.style.alignment }, set: { v in tools.updateText(id) { $0.style.alignment = v } })) {
+                Text("Start").tag(TextAlignment.start); Text("Centre").tag(TextAlignment.center)
+                Text("End").tag(TextAlignment.end); Text("Justify").tag(TextAlignment.justified)
+            }
+            .pickerStyle(.segmented)
+
+            Picker("Direction", selection: Binding(get: { content.style.direction }, set: { v in tools.updateText(id) { $0.style.direction = v } })) {
+                Text("Auto").tag(TextDirection.auto); Text("RTL").tag(TextDirection.rightToLeft); Text("LTR").tag(TextDirection.leftToRight)
+            }
+            .pickerStyle(.segmented)
+
+            Toggle("Italic", isOn: Binding(get: { content.style.italic }, set: { v in tools.updateText(id) { $0.style.italic = v } }))
+            ForEach(optional, id: \.0) { tag, title in
+                Toggle(title, isOn: Binding(get: { content.style.features.contains(FontFeature(tag)) }, set: { on in
+                    tools.updateText(id) { t in
+                        t.style.features.removeAll { $0.tag == tag }
+                        if on { t.style.features.append(FontFeature(tag)) }
+                    }
+                }))
+            }
+        }
+        .font(.caption)
+    }
+
+    private var bend: Double {
+        if case .arc(let d)? = content.style.curve { return d }
+        return 0
+    }
+
+    private func slider(_ title: String, value: Double, range: ClosedRange<Double>, set: @escaping (Double) -> Void) -> some View {
+        HStack {
+            Text(title).frame(width: 52, alignment: .leading)
+            Slider(value: Binding(get: { value }, set: set), in: range)
+        }
     }
 }
 

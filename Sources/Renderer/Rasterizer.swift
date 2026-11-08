@@ -48,6 +48,12 @@ public enum LayerRasterizer {
         return ok ? TilePixels(key: key, data: data) : nil
     }
 
+    /// Draws the whole document into any Core Graphics context whose user space is canvas millimetres, y down
+    /// (a bitmap, a PDF page, an SVG-like recorder). This is the one drawing routine for screen, PNG and PDF.
+    public static func draw(_ document: Document, in ctx: CGContext, region: Rect2, assets: AssetProvider? = nil) {
+        draw(document.layers, in: ctx, parent: .identity, tile: region, assets: assets)
+    }
+
     // MARK: Drawing
 
     private static func draw(_ layers: [Layer], in ctx: CGContext, parent: Transform2D, tile: Rect2, assets: AssetProvider?) {
@@ -69,6 +75,7 @@ public enum LayerRasterizer {
             case .group: needsLayer = layer.opacity < 1 || layer.blendMode != .normal
             case .shape(let s): needsLayer = (layer.opacity < 1 || layer.blendMode != .normal) && s.fill != nil && s.stroke != nil
             case .image: needsLayer = false
+            case .text(let t): needsLayer = (layer.opacity < 1 || layer.blendMode != .normal) && t.style.stroke != nil
             }
 
             ctx.setAlpha(CGFloat(layer.opacity))
@@ -84,6 +91,8 @@ public enum LayerRasterizer {
                 draw(kids, in: ctx, parent: world, tile: tile, assets: assets)
             case .shape(let s):
                 drawShape(s, in: ctx)
+            case .text(let t):
+                drawShape(ShapeContent(path: t.outline, fill: t.style.fill, stroke: t.style.stroke), in: ctx)
             case .image(let i):
                 if let image = assets?.image(for: i.assetID) {
                     // The context is y-down, so flip once around the image's height to draw it upright.
