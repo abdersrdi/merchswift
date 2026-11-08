@@ -73,3 +73,11 @@ public enum CutLineGenerator {
         return CutPath(contours: contours)
     }
 }
+
+
+public enum PolygonFit {
+    /// Turns a closed polygon into cubic Beziers, keeping real corners sharp and re-smoothing runs that came from a curve.
+    public static func fitClosed(_ polygon: [Point], tolerance: Double = 0.01, cornerAngleDegrees: Double = 25) -> Contour? {
+        BezierFit.fitClosedPolygon(polygon, tolerance: tolerance, cornerAngleDegrees: cornerAngleDegrees)
+    }
+}

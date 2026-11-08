@@ -85,6 +85,41 @@ public struct PathData: Codable, Equatable {
         return out
     }
 
+    /// Straight-line approximation whose largest deviation from each curve is about `tolerance` millimetres.
+    public func flattened(tolerance: Double) -> [(points: [Point], closed: Bool)] {
+        var out: [(points: [Point], closed: Bool)] = []
+        var current: [Point] = []
+        var start: Point?
+        var last = Point(0, 0)
+
+        func finish(closed: Bool) {
+            if current.count > 1 || (current.count == 1 && closed) { out.append((current, closed)) }
+            current = []
+        }
+        for e in elements {
+            switch e {
+            case .move(let p):
+                finish(closed: false)
+                current = [p]; start = p; last = p
+            case .line(let p):
+                current.append(p); last = p
+            case .cubic(let a, let b, let c):
+                let dd0 = last - a * 2 + b, dd1 = a - b * 2 + c
+                let m = max(dd0.length, dd1.length)
+                let n = max(2, min(500, Int((0.75 * m / max(tolerance, 1e-6)).squareRoot().rounded(.up))))
+                let seg = CubicBezier(last, a, b, c)
+                for i in 1...n { current.append(seg.point(at: Double(i) / Double(n))) }
+                last = c
+            case .close:
+                if let s = start, let l = current.last, (l - s).length < 1e-9 { current.removeLast() }
+                finish(closed: true)
+                if let s = start { last = s }
+            }
+        }
+        finish(closed: false)
+        return out
+    }
+
     public var bounds: Rect2? {
         Rect2.bounding(flattened().flatMap { $0.points })
     }

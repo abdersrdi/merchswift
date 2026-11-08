@@ -53,6 +53,57 @@ enum BezierFit {
         return segments.isEmpty ? nil : Contour(segments: segments)
     }
 
+    /// Fits a closed polygon whose corners are its own vertices: a vertex is a corner when the path turns by more
+    /// than `cornerAngleDegrees` there. Straight runs stay straight, and runs of many small turns (a flattened curve)
+    /// become smooth curves again. Works for sparse polygons such as a rectangle with four points.
+    static func fitClosedPolygon(_ input: [Point], tolerance: Double, cornerAngleDegrees: Double) -> Contour? {
+        var pts: [Point] = []
+        for p in input where pts.last.map({ ($0 - p).length > 1e-9 }) ?? true { pts.append(p) }
+        if let f = pts.first, let l = pts.last, (f - l).length < 1e-9 { pts.removeLast() }
+        let n = pts.count
+        guard n >= 3 else { return nil }
+
+        var corners: [Int] = []
+        for i in 0..<n {
+            let a = pts[i] - pts[(i - 1 + n) % n], b = pts[(i + 1) % n] - pts[i]
+            let la = a.length, lb = b.length
+            if la < 1e-12 || lb < 1e-12 { continue }
+            let c = max(-1, min(1, a.dot(b) / (la * lb)))
+            if acos(c) * 180 / .pi > cornerAngleDegrees { corners.append(i) }
+        }
+        var splits = corners
+        if splits.isEmpty { splits = [0, n / 2] } else if splits.count == 1 { splits.append((splits[0] + n / 2) % n) }
+        splits.sort()
+
+        var segments: [CubicBezier] = []
+        for k in 0..<splits.count {
+            let a = splits[k], b = splits[(k + 1) % splits.count]
+            var section: [Point] = []
+            var i = a
+            while true {
+                section.append(pts[i])
+                if i == b && section.count > 1 { break }
+                i = (i + 1) % n
+                if section.count > n + 1 { break }
+            }
+            guard section.count >= 2 else { continue }
+            func tangent(_ idx: Int, forward: Bool, corner: Bool) -> Point {
+                let here = pts[idx]
+                if corner {
+                    // One-sided: along the edge that belongs to this section.
+                    let other = forward ? pts[(idx + 1) % n] : pts[(idx - 1 + n) % n]
+                    return (other - here).normalized()
+                }
+                let t = (pts[(idx + 1) % n] - pts[(idx - 1 + n) % n]).normalized()
+                return forward ? t : t * -1
+            }
+            let t1 = tangent(a, forward: true, corner: corners.contains(a))
+            let t2 = tangent(b, forward: false, corner: corners.contains(b))
+            segments.append(contentsOf: fitCurve(section, t1, t2, error: tolerance))
+        }
+        return segments.isEmpty ? nil : Contour(segments: segments)
+    }
+
     static func findCorners(_ pts: [Point], angle: Double) -> [Int] {
         let n = pts.count
         let k = 4
