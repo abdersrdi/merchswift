@@ -22,8 +22,10 @@ final class DocumentExportTests: XCTestCase {
     /// The document the CI render check and the structure tests share: 100 x 60 mm.
     static func sampleDocument() -> (Document, Pixels) {
         let pixels = Pixels()
-        // Two pixels: opaque magenta on the left, fully transparent on the right.
-        pixels.images["half"] = RGBAImage(width: 2, height: 1, pixels: [255, 0, 255, 255, 0, 255, 0, 0])
+        // 8 x 4 pixels: the left half opaque magenta, the right half fully transparent.
+        var half: [UInt8] = []
+        for _ in 0..<4 { for x in 0..<8 { half += x < 4 ? [255, 0, 255, 255] : [0, 255, 0, 0] } }
+        pixels.images["half"] = RGBAImage(width: 8, height: 4, pixels: half)
         func shape(_ name: String, _ r: Rect2, _ c: RGBA, opacity: Double = 1, blend: BlendMode = .normal) -> Layer {
             Layer(name: name, content: .shape(ShapeContent(path: .rect(Rect2(x: 0, y: 0, width: r.width, height: r.height)), fill: c)),
                   transform: .translation(r.x, r.y), opacity: opacity, blendMode: blend)
@@ -32,7 +34,7 @@ final class DocumentExportTests: XCTestCase {
             shape("red", Rect2(x: 10, y: 10, width: 30, height: 20), RGBA(1, 0, 0)),
             shape("half green", Rect2(x: 60, y: 10, width: 30, height: 20), RGBA(0, 1, 0), opacity: 0.5),
             shape("multiply", Rect2(x: 20, y: 20, width: 30, height: 20), RGBA(0.5, 0.5, 1), blend: .multiply),
-            Layer(name: "picture", content: .image(ImageContent(assetID: "half", size: Size2(20, 10), pixelWidth: 2, pixelHeight: 1)),
+            Layer(name: "picture", content: .image(ImageContent(assetID: "half", size: Size2(20, 10), pixelWidth: 8, pixelHeight: 4)),
                   transform: .translation(70, 40)),
             Layer(name: "ring", content: .shape(ShapeContent(path: .ellipse(in: Rect2(x: 0, y: 0, width: 20, height: 20)), fill: nil,
                                                               stroke: Stroke(color: RGBA(0, 0, 1), width: 2))),

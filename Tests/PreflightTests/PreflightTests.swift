@@ -247,8 +247,8 @@ final class PreflightTests: XCTestCase {
 
     func testSelfCrossingCutLineIsAnError() {
         func line(_ a: Point, _ b: Point) -> CubicBezier { CubicBezier(a, a + (b - a) * (1.0 / 3), a + (b - a) * (2.0 / 3), b) }
-        // A bow tie: the two diagonals cross in the middle.
-        let bow = Contour(segments: [line(Point(0, 0), Point(10, 10)), line(Point(10, 10), Point(10, 0)),
+        // A bow tie: the two diagonals cross, away from any sample point so the crossing is a proper one.
+        let bow = Contour(segments: [line(Point(0, 0), Point(10, 7)), line(Point(10, 7), Point(10, 0)),
                                      line(Point(10, 0), Point(0, 10)), line(Point(0, 10), Point(0, 0))])
         let d = doc(sticker, [shape("art", Rect2(x: 10, y: 10, width: 60, height: 60))])
         let report = run(d, cut: CutPath(contours: [bow]))

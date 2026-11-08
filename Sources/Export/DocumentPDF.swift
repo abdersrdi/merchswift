@@ -145,6 +145,8 @@ public enum DocumentPDF {
                   let groupSpace = iccSpaceArray() else { throw fail("could not create a group") }
             pdfioDictSetName(d, S("Type"), S("XObject"))
             pdfioDictSetName(d, S("Subtype"), S("Form"))
+            // PDFio writes the dictionary before it starts the stream, so the filter has to be named up front.
+            pdfioDictSetName(d, S("Filter"), S("FlateDecode"))
             for v in [form.bbox.minX, form.bbox.minY, form.bbox.maxX, form.bbox.maxY] { pdfioArrayAppendNumber(bbox, v) }
             pdfioDictSetArray(d, S("BBox"), bbox)
             pdfioDictSetName(group, S("Type"), S("Group"))
