@@ -114,7 +114,8 @@ public final class CoreTextShaper: TextShaping {
                 var positions = [CGPoint](repeating: .zero, count: count)
                 CTRunGetGlyphs(run, CFRange(location: 0, length: 0), &glyphs)
                 CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
-                glyphTotal += count
+                // A ligature can leave a deleted-glyph placeholder (0xFFFF) behind; it is not a drawn glyph.
+                glyphTotal += glyphs.filter { $0 != 0xFFFF }.count
                 let r = CTRunGetStringRange(run)
                 runsOut.append(DebugRun(range: NSRange(location: r.location + entry.utf16Offset, length: r.length),
                                         x: x0 + Double(positions[0].x), glyphs: count))

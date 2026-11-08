@@ -95,9 +95,13 @@ final class TypographyTests: XCTestCase {
     }
 
     func testLamAlefBecomesOneGlyph() {
-        let s = style("Amiri", size: 40)
-        XCTAssertEqual(shaper.glyphCount(text: "لا", style: s), 1)
-        XCTAssertEqual(shaper.glyphCount(text: "ل ا", style: s), 3, "with a space between them there is no ligature")
+        var counts: [String: Int] = [:]
+        for family in ["Amiri", "Cairo", "Tajawal", "Noto Naskh Arabic"] {
+            counts[family] = shaper.glyphCount(text: "لا", style: style(family, size: 40))
+        }
+        for (family, n) in counts { XCTAssertEqual(n, 1, "\(family) should form the lam-alef ligature; glyph counts: \(counts)") }
+        let apart = shaper.glyphCount(text: "ل ا", style: style("Amiri", size: 40))
+        XCTAssertEqual(apart, 3, "with a space between them there is no ligature")
     }
 
     func testDiacriticsAddHeightAndDepth() {
@@ -332,7 +336,7 @@ final class TypographyTests: XCTestCase {
         func add(_ text: String, _ s: TextStyle, box: Double = 232) {
             let l = textLayer(text, s, x: 4, y: y, box: box)
             layers.append(l)
-            y += (l.localBounds?.height ?? 20) + 3
+            if case .text(let c) = l.content { y += c.size.height + 3 }
         }
         add("السلام عليكم ورحمة الله", style("Amiri", size: 15) { $0.alignment = .center })
         add("رمضان كريم", style("Reem Kufi", size: 17, weight: 600) { $0.alignment = .center; $0.fill = RGBA(0.08, 0.45, 0.35) })
