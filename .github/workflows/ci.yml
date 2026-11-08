@@ -44,7 +44,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Package tests
-        continue-on-error: true
         run: swift test
       - name: Generate project
         run: |
