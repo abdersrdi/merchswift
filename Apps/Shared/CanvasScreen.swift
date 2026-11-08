@@ -116,7 +116,10 @@ struct CanvasScreen: View {
 /// Position, size, opacity and blend mode of the selection, with millimetre fields that apply on Return.
 struct Inspector: View {
     @ObservedObject var model: EditorModel
-    @State private var x = "", y = "", w = "", h = ""
+    @State private var x = ""
+    @State private var y = ""
+    @State private var w = ""
+    @State private var h = ""
 
     private var tools: ToolController { model.tools }
 
