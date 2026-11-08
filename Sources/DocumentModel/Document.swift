@@ -10,6 +10,15 @@ public struct Guide: Codable, Equatable, Identifiable {
     public init(id: UUID = UUID(), axis: Axis, position: Double) { self.id = id; self.axis = axis; self.position = position }
 }
 
+/// How the sticker cut line is made around the artwork.
+public struct CutLineSettings: Codable, Equatable {
+    /// Distance from the artwork edge to the cut line, in millimetres.
+    public var offset: Double
+    /// Rounding of tight notches, in millimetres.
+    public var smoothing: Double
+    public init(offset: Double = 2, smoothing: Double = 1) { self.offset = offset; self.smoothing = smoothing }
+}
+
 /// A design: a canvas of a fixed size in millimetres and a stack of layers, bottom first.
 public struct Document: Codable, Equatable {
     public var formatVersion = 1
@@ -19,11 +28,13 @@ public struct Document: Codable, Equatable {
     public var presetID: String?
     public var layers: [Layer]
     public var guides: [Guide]
+    /// Set for products that are cut out (die-cut and kiss-cut stickers).
+    public var cutLine: CutLineSettings?
 
     public init(title: String = "Untitled", size: Size2, dpi: Double = 300, presetID: String? = nil,
-                layers: [Layer] = [], guides: [Guide] = []) {
+                layers: [Layer] = [], guides: [Guide] = [], cutLine: CutLineSettings? = nil) {
         self.title = title; self.size = size; self.dpi = dpi; self.presetID = presetID
-        self.layers = layers; self.guides = guides
+        self.layers = layers; self.guides = guides; self.cutLine = cutLine
     }
 
     public var canvas: Rect2 { Rect2(x: 0, y: 0, width: size.width, height: size.height) }

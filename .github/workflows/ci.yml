@@ -16,14 +16,16 @@ jobs:
       - name: Write proof files
         run: |
           mkdir -p proof
-          MERCHSWIFT_PROOF_DIR="$PWD/proof" swift test --filter StickerPDFTests/testWriteProofFiles
+          MERCHSWIFT_PROOF_DIR="$PWD/proof" swift test --filter testWriteProofFiles
           ls -l proof
       - name: Look inside the PDF
         if: always()
         run: |
           apt-get update -qq
-          apt-get install -y -qq qpdf poppler-utils
+          apt-get install -y -qq qpdf poppler-utils unzip python3-pil
           qpdf --check proof/sticker-cutcontour.pdf || true
+          qpdf --check proof/document-sample.pdf
+          python3 scripts/verify_pdf_render.py proof
           qpdf --qdf --object-streams=disable --stream-data=uncompress proof/sticker-cutcontour.pdf proof/inspect.pdf || true
           grep -a -v "^[^ -~]" proof/inspect.pdf | grep -a -n "Separation\|OutputIntent\|TrimBox\|BleedBox\|GTS_PDFX\|DestOutputProfile\|/Type\|CutContour\| SCN\| CS" | head -60 || true
           pdfinfo proof/sticker-cutcontour.pdf || true

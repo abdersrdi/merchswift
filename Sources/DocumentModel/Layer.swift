@@ -26,7 +26,12 @@ public struct ImageContent: Codable, Equatable {
     public var assetID: String
     /// Size of the image in the layer's own coordinates, in millimetres, with its top left corner at the origin.
     public var size: Size2
-    public init(assetID: String, size: Size2) { self.assetID = assetID; self.size = size }
+    /// The pixels the original image has, so print resolution can be checked. Nil when unknown.
+    public var pixelWidth: Int?
+    public var pixelHeight: Int?
+    public init(assetID: String, size: Size2, pixelWidth: Int? = nil, pixelHeight: Int? = nil) {
+        self.assetID = assetID; self.size = size; self.pixelWidth = pixelWidth; self.pixelHeight = pixelHeight
+    }
 }
 
 public enum LayerContent: Codable, Equatable {

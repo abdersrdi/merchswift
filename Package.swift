@@ -11,6 +11,8 @@ let package = Package(
         .library(name: "Editor", targets: ["Editor"]),
         .library(name: "Renderer", targets: ["Renderer"]),
         .library(name: "Typography", targets: ["Typography"]),
+        .library(name: "Products", targets: ["Products"]),
+        .library(name: "Preflight", targets: ["Preflight"]),
     ],
     targets: [
         // PDFio (Apache 2.0) by Michael R Sweet, vendored. Used for PDF/X-4 output.
@@ -32,6 +34,11 @@ let package = Package(
         // Text shaping with Core Text and the bundled SIL OFL fonts. Empty on Linux.
         .target(name: "Typography", dependencies: ["DocumentModel", "Editor", "CutLine"], path: "Sources/Typography",
                 resources: [.copy("Fonts")]),
+        // Product presets and the print checks. Plain Swift, so they run in Linux CI too.
+        .target(name: "Products", dependencies: ["DocumentModel", "CutLine"], path: "Sources/Products"),
+        .target(name: "Preflight", dependencies: ["DocumentModel", "CutLine", "Products"], path: "Sources/Preflight"),
+        .testTarget(name: "ProductsTests", dependencies: ["Products", "DocumentModel", "CutLine"], path: "Tests/ProductsTests"),
+        .testTarget(name: "PreflightTests", dependencies: ["Preflight", "Products", "DocumentModel", "CutLine"], path: "Tests/PreflightTests"),
         .testTarget(name: "TypographyTests", dependencies: ["Typography", "Renderer", "DocumentModel", "Editor", "CutLine"], path: "Tests/TypographyTests"),
         .testTarget(name: "RendererTests", dependencies: ["Renderer", "DocumentModel", "Editor", "CutLine"], path: "Tests/RendererTests"),
         .testTarget(name: "DocumentModelTests", dependencies: ["DocumentModel", "CutLine"], path: "Tests/DocumentModelTests"),

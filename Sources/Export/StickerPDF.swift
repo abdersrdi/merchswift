@@ -206,7 +206,7 @@ public enum StickerPDF {
         return PDFInfo(version: version, pageCount: Int(pdfioFileGetNumPages(pdf)))
     }
 
-    private static func xmpPacket(title: String, creator: String) -> String {
+    static func xmpPacket(title: String, creator: String) -> String {
         let now = ISO8601DateFormatter().string(from: Date())
         let doc = UUID().uuidString.lowercased(), inst = UUID().uuidString.lowercased()
         func esc(_ s: String) -> String {
