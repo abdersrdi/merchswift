@@ -1,16 +1,16 @@
 import Foundation
 
-public struct Point: Equatable {
+public struct Point: Equatable, Codable {
     public var x: Double
     public var y: Double
     public init(_ x: Double, _ y: Double) { self.x = x; self.y = y }
 
-    static func + (a: Point, b: Point) -> Point { Point(a.x + b.x, a.y + b.y) }
-    static func - (a: Point, b: Point) -> Point { Point(a.x - b.x, a.y - b.y) }
-    static func * (a: Point, s: Double) -> Point { Point(a.x * s, a.y * s) }
-    var length: Double { (x * x + y * y).squareRoot() }
-    func dot(_ o: Point) -> Double { x * o.x + y * o.y }
-    func normalized() -> Point {
+    public static func + (a: Point, b: Point) -> Point { Point(a.x + b.x, a.y + b.y) }
+    public static func - (a: Point, b: Point) -> Point { Point(a.x - b.x, a.y - b.y) }
+    public static func * (a: Point, s: Double) -> Point { Point(a.x * s, a.y * s) }
+    public var length: Double { (x * x + y * y).squareRoot() }
+    public func dot(_ o: Point) -> Double { x * o.x + y * o.y }
+    public func normalized() -> Point {
         let l = length
         return l > 1e-12 ? Point(x / l, y / l) : Point(0, 0)
     }

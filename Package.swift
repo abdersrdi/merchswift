@@ -7,6 +7,8 @@ let package = Package(
     products: [
         .library(name: "CutLine", targets: ["CutLine"]),
         .library(name: "Export", targets: ["Export"]),
+        .library(name: "DocumentModel", targets: ["DocumentModel"]),
+        .library(name: "Editor", targets: ["Editor"]),
     ],
     targets: [
         // PDFio (Apache 2.0) by Michael R Sweet, vendored. Used for PDF/X-4 output.
@@ -21,6 +23,10 @@ let package = Package(
         // Contour tracing, offset, Bezier fitting, SVG and DXF. Foundation only, so it also runs on Linux CI.
         .target(name: "CutLine", path: "Sources/CutLine"),
         .target(name: "Export", dependencies: ["CutLine", "CPDFio"], path: "Sources/Export"),
+        .target(name: "DocumentModel", dependencies: ["CutLine"], path: "Sources/DocumentModel"),
+        .target(name: "Editor", dependencies: ["DocumentModel", "CutLine"], path: "Sources/Editor"),
+        .testTarget(name: "DocumentModelTests", dependencies: ["DocumentModel", "CutLine"], path: "Tests/DocumentModelTests"),
+        .testTarget(name: "EditorTests", dependencies: ["Editor", "DocumentModel", "CutLine"], path: "Tests/EditorTests"),
         .testTarget(name: "CutLineTests", dependencies: ["CutLine"], path: "Tests/CutLineTests"),
         .testTarget(name: "ExportTests", dependencies: ["Export", "CutLine", "CPDFio"], path: "Tests/ExportTests"),
     ]
