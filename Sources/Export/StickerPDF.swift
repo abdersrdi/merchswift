@@ -164,7 +164,7 @@ public enum StickerPDF {
 
         pdfioContentSave(page)
         pdfioContentSetStrokeColorSpace(page, "CutContour")
-        pdfioStreamPrintf(page, "1 SCN\n")
+        pdfioStreamPuts(page, "1 SCN\n")
         pdfioContentSetLineWidth(page, options.cutLineWidth)
         func map(_ p: Point) -> (Double, Double) { (p.x * pt, pageH - p.y * pt) }
         for contour in cut.contours {
