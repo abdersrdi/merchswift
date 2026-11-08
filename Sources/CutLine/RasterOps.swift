@@ -36,7 +36,7 @@ enum RasterOps {
         z[1] = inf
         if n == 1 { return [f[0]] }
         for q in 1..<n {
-            var s: Float
+            var s: Float = 0
             while true {
                 let p = v[k]
                 s = ((f[q] + Float(q * q)) - (f[p] + Float(p * p))) / Float(2 * q - 2 * p)

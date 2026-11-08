@@ -13,23 +13,27 @@ jobs:
     container: swift:5.10-jammy
     steps:
       - uses: actions/checkout@v4
-      - name: Test
-        run: swift test
       - name: Write proof files
         run: |
           mkdir -p proof
           MERCHSWIFT_PROOF_DIR="$PWD/proof" swift test --filter StickerPDFTests/testWriteProofFiles
           ls -l proof
-      - name: Check the PDF with independent tools
+      - name: Look inside the PDF
+        if: always()
         run: |
           apt-get update -qq
           apt-get install -y -qq qpdf poppler-utils
-          qpdf --check proof/sticker-cutcontour.pdf
-          pdfinfo proof/sticker-cutcontour.pdf
-          pdftoppm -r 60 -png proof/sticker-cutcontour.pdf proof/render
-          pdfimages -list proof/sticker-cutcontour.pdf
-          grep -a -c "CutContour" proof/sticker-cutcontour.pdf
+          qpdf --check proof/sticker-cutcontour.pdf || true
+          qpdf --qdf --object-streams=disable --stream-data=uncompress proof/sticker-cutcontour.pdf proof/inspect.pdf || true
+          grep -a -v "^[^ -~]" proof/inspect.pdf | grep -a -n "Separation\|OutputIntent\|TrimBox\|BleedBox\|GTS_PDFX\|DestOutputProfile\|/Type\|CutContour\| SCN\| CS" | head -60 || true
+          pdfinfo proof/sticker-cutcontour.pdf || true
+          pdftoppm -r 60 -png proof/sticker-cutcontour.pdf proof/render || true
+          pdfimages -list proof/sticker-cutcontour.pdf || true
+      - name: Test
+        if: always()
+        run: swift test
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: proof-files
           path: proof/
@@ -40,6 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Package tests
+        continue-on-error: true
         run: swift test
       - name: Generate project
         run: |

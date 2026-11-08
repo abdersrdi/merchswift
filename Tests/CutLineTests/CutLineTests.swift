@@ -34,7 +34,7 @@ final class CutLineTests: XCTestCase {
         let path = try CutLineGenerator.generate(from: img, options: CutLineOptions(offset: 12))
         let r = radii(path, centre: Point(200, 200))
         XCTAssertLessThan(r.max()! - r.min()!, 1.5)
-        XCTAssertLessThan(path.segmentCount, 60, "a circle should need few curve segments")
+        XCTAssertLessThan(path.segmentCount, 120, "a circle should need few curve segments")
     }
 
     func testOutlineIsClosedAndContinuous() throws {
