@@ -114,7 +114,7 @@ final class PenPathTests: XCTestCase {
         XCTAssertEqual(pen.anchors[1].position, Point(5, 0))
         XCTAssertNil(pen.anchors[1].handleIn)
         XCTAssertEqual(pen.toPathData().elements, [.move(Point(0, 0)), .line(Point(5, 0)), .line(Point(10, 0))])
-        XCTAssertNil(pen.insertAnchor(afterSegment: 1, at: 0.5), "an open path has no segment after its last point")
+        XCTAssertNil(pen.insertAnchor(afterSegment: 2, at: 0.5), "an open path has no segment after its last point")
     }
 
     func testDeleteAndToggle() {
