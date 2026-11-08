@@ -43,8 +43,16 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Package tests
-        run: swift test
+      - name: Package tests (includes the Metal render tests)
+        run: |
+          mkdir -p render-proof
+          MERCHSWIFT_PROOF_DIR="$PWD/render-proof" swift test
+          ls -l render-proof || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: render-proof
+          path: render-proof/
       - name: Generate project
         run: |
           brew install xcodegen

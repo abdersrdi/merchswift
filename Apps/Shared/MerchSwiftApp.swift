@@ -4,7 +4,7 @@ import SwiftUI
 struct MerchSwiftApp: App {
     var body: some Scene {
         WindowGroup {
-            ProofView()
+            RootView()
         }
         #if os(macOS)
         .defaultSize(width: 900, height: 700)

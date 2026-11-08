@@ -9,6 +9,7 @@ let package = Package(
         .library(name: "Export", targets: ["Export"]),
         .library(name: "DocumentModel", targets: ["DocumentModel"]),
         .library(name: "Editor", targets: ["Editor"]),
+        .library(name: "Renderer", targets: ["Renderer"]),
     ],
     targets: [
         // PDFio (Apache 2.0) by Michael R Sweet, vendored. Used for PDF/X-4 output.
@@ -25,6 +26,9 @@ let package = Package(
         .target(name: "Export", dependencies: ["CutLine", "CPDFio"], path: "Sources/Export"),
         .target(name: "DocumentModel", dependencies: ["CutLine"], path: "Sources/DocumentModel"),
         .target(name: "Editor", dependencies: ["DocumentModel", "CutLine"], path: "Sources/Editor"),
+        // Metal canvas. Every file is guarded with canImport, so on Linux this target is empty.
+        .target(name: "Renderer", dependencies: ["DocumentModel", "Editor", "CutLine"], path: "Sources/Renderer"),
+        .testTarget(name: "RendererTests", dependencies: ["Renderer", "DocumentModel", "Editor", "CutLine"], path: "Tests/RendererTests"),
         .testTarget(name: "DocumentModelTests", dependencies: ["DocumentModel", "CutLine"], path: "Tests/DocumentModelTests"),
         .testTarget(name: "EditorTests", dependencies: ["Editor", "DocumentModel", "CutLine"], path: "Tests/EditorTests"),
         .testTarget(name: "CutLineTests", dependencies: ["CutLine"], path: "Tests/CutLineTests"),

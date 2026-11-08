@@ -24,6 +24,12 @@ targets:
         product: CutLine
       - package: MerchSwift
         product: Export
+      - package: MerchSwift
+        product: DocumentModel
+      - package: MerchSwift
+        product: Editor
+      - package: MerchSwift
+        product: Renderer
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.pdfswift.merchswift
@@ -47,6 +53,12 @@ targets:
         product: CutLine
       - package: MerchSwift
         product: Export
+      - package: MerchSwift
+        product: DocumentModel
+      - package: MerchSwift
+        product: Editor
+      - package: MerchSwift
+        product: Renderer
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.pdfswift.merchswift
