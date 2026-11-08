@@ -217,8 +217,8 @@ struct TextInspector: View {
             }
 
             Picker("Align", selection: Binding(get: { content.style.alignment }, set: { v in tools.updateText(id) { $0.style.alignment = v } })) {
-                Text("Start").tag(TextAlignment.start); Text("Centre").tag(TextAlignment.center)
-                Text("End").tag(TextAlignment.end); Text("Justify").tag(TextAlignment.justified)
+                Text("Start").tag(DocumentModel.TextAlignment.start); Text("Centre").tag(DocumentModel.TextAlignment.center)
+                Text("End").tag(DocumentModel.TextAlignment.end); Text("Justify").tag(DocumentModel.TextAlignment.justified)
             }
             .pickerStyle(.segmented)
 
