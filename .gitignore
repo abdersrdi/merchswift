@@ -1,0 +1,21 @@
+# Server code stays private. It is never pushed to this public repository.
+/worker/
+/server/
+
+# Build output
+.build/
+*.xcodeproj/
+DerivedData/
+xcuserdata/
+.swiftpm/
+Package.resolved
+
+# Store assets, secrets and local files
+/store-assets/
+*.p8
+*.p12
+*.mobileprovision
+.env
+.env.*
+.dev.vars
+.DS_Store
