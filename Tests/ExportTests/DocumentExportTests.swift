@@ -4,7 +4,7 @@ import DocumentModel
 import Products
 @testable import Export
 
-private final class Pixels: PixelSource {
+final class Pixels: PixelSource {
     var images: [String: RGBAImage] = [:]
     func pixels(for assetID: String) -> RGBAImage? { images[assetID] }
 }
