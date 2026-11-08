@@ -94,14 +94,19 @@ final class TypographyTests: XCTestCase {
         }
     }
 
-    func testLamAlefBecomesOneGlyph() {
-        var counts: [String: Int] = [:]
-        for family in ["Amiri", "Cairo", "Tajawal", "Noto Naskh Arabic"] {
-            counts[family] = shaper.glyphCount(text: "لا", style: style(family, size: 40))
+    func testLamAlefIsShapedAsAJoinedPair() {
+        // Some fonts (Cairo, Tajawal) draw lam-alef as one ligature glyph; others (Amiri, Noto Naskh) build it from
+        // two joined glyphs. Either way it must not be two separate isolated letters.
+        for family in ["Cairo", "Tajawal"] {
+            XCTAssertEqual(shaper.glyphCount(text: "لا", style: style(family, size: 40)), 1, "\(family) forms a single lam-alef glyph")
         }
-        for (family, n) in counts { XCTAssertEqual(n, 1, "\(family) should form the lam-alef ligature; glyph counts: \(counts)") }
-        let apart = shaper.glyphCount(text: "ل ا", style: style("Amiri", size: 40))
-        XCTAssertEqual(apart, 3, "with a space between them there is no ligature")
+        for family in ["Cairo", "Tajawal", "Amiri", "Noto Naskh Arabic"] {
+            let s = style(family, size: 40)
+            let together = shaped("لا", s).size.width
+            let apart = shaped("ل", s).size.width + shaped("ا", s).size.width
+            XCTAssertLessThan(together, apart - 0.5, "\(family): lam-alef takes less room than the two isolated letters")
+        }
+        XCTAssertEqual(shaper.glyphCount(text: "ل ا", style: style("Amiri", size: 40)), 3, "with a space between them there is no ligature")
     }
 
     func testDiacriticsAddHeightAndDepth() {
