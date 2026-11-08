@@ -1,7 +1,7 @@
 # Third-party notices
 
 ## PDFio
-Version 1.5.4, Copyright 2021-2025 by Michael R Sweet. Apache License 2.0 (with the exception for GPL2/LGPL2 projects described in its NOTICE file). Source: https://github.com/michaelrsweet/pdfio. The vendored copy is in `Sources/CPDFio`, with its LICENSE and NOTICE files.
+Version 1.5.4, Copyright 2021-2025 by Michael R Sweet. Apache License 2.0 (with the exception for GPL2/LGPL2 projects described in its NOTICE file). Source: https://github.com/michaelrsweet/pdfio. The vendored copy is in `Sources/CPDFio`, with its LICENSE and NOTICE files. One local patch: the end-of-file marker in `pdfio-file.c` is written as `%%%%EOF`, because 1.5.4 wrote a single `%` (`%EOF`) through its own printf, which is not a valid PDF trailer.
 
 ## zlib
 PDFio links against the system zlib.

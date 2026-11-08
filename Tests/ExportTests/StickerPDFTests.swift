@@ -49,7 +49,7 @@ final class StickerPDFTests: XCTestCase {
         XCTAssertTrue(text.contains("pdfxid:GTS_PDFXVersion=\"PDF/X-4\""))
         XCTAssertTrue(text.contains("/TrimBox"))
         XCTAssertTrue(text.contains("/BleedBox"))
-        XCTAssertTrue(text.hasSuffix("%%EOF\n") || text.contains("%%EOF"))
+        XCTAssertTrue(text.hasSuffix("\n%%EOF\n"), "the file must end with %%EOF")
     }
 
     func testReopensWithPDFio() throws {
@@ -71,7 +71,8 @@ final class StickerPDFTests: XCTestCase {
         try StickerPDF.write(artwork: art, cut: cut, to: url, options: StickerPDFOptions(dpi: 300))
         let text = String(decoding: try Data(contentsOf: url), as: UTF8.self)
         // 300 px at 300 dpi is exactly 1 inch = 72 pt.
-        XCTAssertTrue(text.contains("/MediaBox [0 0 72 72]"), "media box missing or wrong size")
+        XCTAssertNotNil(text.range(of: #"/MediaBox\s*\[\s*0 0 72 72\s*\]"#, options: .regularExpression), "media box missing or wrong size")
+        XCTAssertNotNil(text.range(of: #"/CropBox\s*\[\s*0 0 72 72\s*\]"#, options: .regularExpression), "crop box must match the page")
     }
 
     func testVersionString() {

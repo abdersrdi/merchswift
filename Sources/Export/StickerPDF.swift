@@ -72,7 +72,8 @@ public enum StickerPDF {
         let pageH = Double(artwork.height) * pt
 
         var media = pdfio_rect_t(x1: 0, y1: 0, x2: pageW, y2: pageH)
-        guard let pdf = pdfioFileCreate(url.path, "1.6", &media, nil, { _, message, data in
+        var crop = media
+        guard let pdf = pdfioFileCreate(url.path, "1.6", &media, &crop, { _, message, data in
             if let data, let message {
                 Unmanaged<ErrorBox>.fromOpaque(data).takeUnretainedValue().messages.append(String(cString: message))
             }
