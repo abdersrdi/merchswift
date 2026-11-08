@@ -199,9 +199,9 @@ public struct Document: Codable, Equatable {
         case .shape(let s):
             let polys = s.path.flattened()
             if s.fill != nil {
-                var inside = false
-                for poly in polys where poly.closed && Self.pointInPolygonNonZero(p, poly.points) { inside = true }
-                if inside { return true }
+                // Windings add up across all subpaths of the shape, so a reversed inner outline leaves a hole.
+                let winding = polys.filter { $0.closed }.reduce(0) { $0 + Self.windingNumber(p, $1.points) }
+                if winding != 0 { return true }
             }
             let half = (s.stroke?.width ?? 0) / 2 + tolerance
             if s.stroke != nil || tolerance > 0 {
@@ -218,7 +218,7 @@ public struct Document: Codable, Equatable {
         }
     }
 
-    static func pointInPolygonNonZero(_ p: Point, _ poly: [Point]) -> Bool {
+    static func windingNumber(_ p: Point, _ poly: [Point]) -> Int {
         var winding = 0
         for i in 0..<poly.count {
             let a = poly[i], b = poly[(i + 1) % poly.count]
@@ -228,7 +228,7 @@ public struct Document: Codable, Equatable {
                 winding -= 1
             }
         }
-        return winding != 0
+        return winding
     }
 
     private static func isLeft(_ a: Point, _ b: Point, _ p: Point) -> Double { (b.x - a.x) * (p.y - a.y) - (p.x - a.x) * (b.y - a.y) }
