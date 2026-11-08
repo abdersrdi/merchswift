@@ -59,7 +59,7 @@ final class RasterizerTests: XCTestCase {
         let doc = Document(size: Size2(600, 100), layers: [rectLayer("r", Rect2(x: 300, y: 10, width: 10, height: 10), RGBA(0, 1, 0))])
         // level 1: 2 px/mm, 256 mm tiles; tile (1, 0) starts at x = 256 mm.
         let t = try tile(doc, level: 1, x: 1, y: 0)
-        XCTAssertEqual(pixel(t, (300 - 256) * 2 + 10, 40).g, 1, accuracy: 0.01)
+        XCTAssertEqual(pixel(t, (300 - 256) * 2 + 10, 30).g, 1, accuracy: 0.01)
         XCTAssertEqual(pixel(t, (300 - 256) * 2 - 3, 40).a, 0, accuracy: 0.01)
         XCTAssertEqual(pixel(t, (310 - 256) * 2 + 3, 40).a, 0, accuracy: 0.01)
         let empty = try tile(doc, level: 1, x: 0, y: 0)
