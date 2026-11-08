@@ -80,13 +80,16 @@ public enum StickerPDF {
         }, ctx) else {
             throw StickerPDFError.pdfio(box.messages.last ?? "could not create \(url.lastPathComponent)")
         }
+        // PDFio keeps the pointers it is given for keys, names and strings instead of copying them, so every
+        // string must come from its own pool and outlive the call. Swift's temporary C strings do not.
+        func S(_ text: String) -> UnsafePointer<CChar> { UnsafePointer(pdfioStringCreate(pdf, text)!) }
         func fail(_ what: String) -> StickerPDFError {
             pdfioFileClose(pdf)
             return .pdfio(box.messages.last ?? what)
         }
 
-        pdfioFileSetTitle(pdf, options.title)
-        pdfioFileSetCreator(pdf, options.creator)
+        pdfioFileSetTitle(pdf, S(options.title))
+        pdfioFileSetCreator(pdf, S(options.creator))
         pdfioFileSetCreationDate(pdf, time(nil))
 
         // Output intent with an embedded ICC profile.
@@ -99,26 +102,26 @@ public enum StickerPDF {
         guard let catalog = pdfioFileGetCatalog(pdf),
               let intent = pdfioDictCreate(pdf),
               let intents = pdfioArrayCreate(pdf) else { throw fail("could not create the catalog entries") }
-        pdfioDictSetName(intent, "Type", "OutputIntent")
-        pdfioDictSetName(intent, "S", "GTS_PDFX")
-        pdfioDictSetString(intent, "OutputConditionIdentifier", options.outputCondition)
-        pdfioDictSetString(intent, "Info", options.outputCondition)
-        pdfioDictSetString(intent, "RegistryName", "http://www.color.org")
-        pdfioDictSetObj(intent, "DestOutputProfile", iccObj)
+        pdfioDictSetName(intent, S("Type"), S("OutputIntent"))
+        pdfioDictSetName(intent, S("S"), S("GTS_PDFX"))
+        pdfioDictSetString(intent, S("OutputConditionIdentifier"), S(options.outputCondition))
+        pdfioDictSetString(intent, S("Info"), S(options.outputCondition))
+        pdfioDictSetString(intent, S("RegistryName"), S("http://www.color.org"))
+        pdfioDictSetObj(intent, S("DestOutputProfile"), iccObj)
         pdfioArrayAppendDict(intents, intent)
-        pdfioDictSetArray(catalog, "OutputIntents", intents)
+        pdfioDictSetArray(catalog, S("OutputIntents"), intents)
 
         // XMP metadata that declares PDF/X-4.
         let xmp = xmpPacket(title: options.title, creator: options.creator)
         guard let metaDict = pdfioDictCreate(pdf) else { throw fail("could not create metadata") }
-        pdfioDictSetName(metaDict, "Type", "Metadata")
-        pdfioDictSetName(metaDict, "Subtype", "XML")
+        pdfioDictSetName(metaDict, S("Type"), S("Metadata"))
+        pdfioDictSetName(metaDict, S("Subtype"), S("XML"))
         guard let metaObj = pdfioFileCreateObj(pdf, metaDict),
               let metaStream = pdfioObjCreateStream(metaObj, PDFIO_FILTER_NONE) else { throw fail("could not create metadata") }
         let xmpBytes = Array(xmp.utf8)
         pdfioStreamWrite(metaStream, xmpBytes, xmpBytes.count)
         pdfioStreamClose(metaStream)
-        pdfioDictSetObj(catalog, "Metadata", metaObj)
+        pdfioDictSetObj(catalog, S("Metadata"), metaObj)
 
         // Artwork image (RGB with a soft mask for the alpha channel).
         guard let colour = pdfioArrayCreateColorFromICCObj(pdf, iccObj) else { throw fail("could not create the colour space") }
@@ -137,27 +140,27 @@ public enum StickerPDF {
         for v in [0.0, 1, 0, 0] { pdfioArrayAppendNumber(c1, v) }
         pdfioArrayAppendNumber(domain, 0)
         pdfioArrayAppendNumber(domain, 1)
-        pdfioDictSetNumber(tint, "FunctionType", 2)
-        pdfioDictSetArray(tint, "Domain", domain)
-        pdfioDictSetArray(tint, "C0", c0)
-        pdfioDictSetArray(tint, "C1", c1)
-        pdfioDictSetNumber(tint, "N", 1)
-        pdfioArrayAppendName(separation, "Separation")
-        pdfioArrayAppendName(separation, "CutContour")
-        pdfioArrayAppendName(separation, "DeviceCMYK")
+        pdfioDictSetNumber(tint, S("FunctionType"), 2)
+        pdfioDictSetArray(tint, S("Domain"), domain)
+        pdfioDictSetArray(tint, S("C0"), c0)
+        pdfioDictSetArray(tint, S("C1"), c1)
+        pdfioDictSetNumber(tint, S("N"), 1)
+        pdfioArrayAppendName(separation, S("Separation"))
+        pdfioArrayAppendName(separation, S("CutContour"))
+        pdfioArrayAppendName(separation, S("DeviceCMYK"))
         pdfioArrayAppendDict(separation, tint)
 
         guard let pageDict = pdfioDictCreate(pdf) else { throw fail("could not create the page") }
-        pdfioPageDictAddImage(pageDict, "Art", image)
-        pdfioPageDictAddColorSpace(pageDict, "CutContour", separation)
+        pdfioPageDictAddImage(pageDict, S("Art"), image)
+        pdfioPageDictAddColorSpace(pageDict, S("CutContour"), separation)
         var bleed = media
-        pdfioDictSetRect(pageDict, "BleedBox", &bleed)
+        pdfioDictSetRect(pageDict, S("BleedBox"), &bleed)
         var trim = media
         if let b = cut.bounds {
             trim = pdfio_rect_t(x1: max(0, b.min.x * pt), y1: max(0, pageH - b.max.y * pt),
                                 x2: min(pageW, b.max.x * pt), y2: min(pageH, pageH - b.min.y * pt))
         }
-        pdfioDictSetRect(pageDict, "TrimBox", &trim)
+        pdfioDictSetRect(pageDict, S("TrimBox"), &trim)
 
         guard let page = pdfioFileCreatePage(pdf, pageDict) else { throw fail("could not create the page") }
         pdfioContentDrawImage(page, "Art", 0, 0, pageW, pageH)

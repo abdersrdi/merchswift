@@ -15,7 +15,7 @@ let package = Package(
             path: "Sources/CPDFio",
             exclude: ["LICENSE", "NOTICE"],
             publicHeadersPath: "include",
-            cSettings: [.define("_GNU_SOURCE")],
+            cSettings: [.define("_GNU_SOURCE"), .unsafeFlags(["-UDEBUG"])],  // PDFio prints a trace when DEBUG is set
             linkerSettings: [.linkedLibrary("z")]
         ),
         // Contour tracing, offset, Bezier fitting, SVG and DXF. Foundation only, so it also runs on Linux CI.
