@@ -1,4 +1,5 @@
 import XCTest
+import CutLine
 import DocumentModel
 @testable import Products
 

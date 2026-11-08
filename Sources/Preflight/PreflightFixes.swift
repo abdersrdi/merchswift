@@ -1,6 +1,8 @@
 import CutLine
 import DocumentModel
+import Editor
 import Foundation
+import Products
 
 public extension Preflight {
     /// Applies a fix to the document. Returns false when the fix could not be applied (the layer is gone, or the fix

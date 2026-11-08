@@ -36,9 +36,9 @@ let package = Package(
                 resources: [.copy("Fonts")]),
         // Product presets and the print checks. Plain Swift, so they run in Linux CI too.
         .target(name: "Products", dependencies: ["DocumentModel", "CutLine"], path: "Sources/Products"),
-        .target(name: "Preflight", dependencies: ["DocumentModel", "CutLine", "Products"], path: "Sources/Preflight"),
+        .target(name: "Preflight", dependencies: ["DocumentModel", "CutLine", "Products", "Editor"], path: "Sources/Preflight"),
         .testTarget(name: "ProductsTests", dependencies: ["Products", "DocumentModel", "CutLine"], path: "Tests/ProductsTests"),
-        .testTarget(name: "PreflightTests", dependencies: ["Preflight", "Products", "DocumentModel", "CutLine"], path: "Tests/PreflightTests"),
+        .testTarget(name: "PreflightTests", dependencies: ["Preflight", "Products", "DocumentModel", "CutLine", "Editor"], path: "Tests/PreflightTests"),
         .testTarget(name: "TypographyTests", dependencies: ["Typography", "Renderer", "DocumentModel", "Editor", "CutLine"], path: "Tests/TypographyTests"),
         .testTarget(name: "RendererTests", dependencies: ["Renderer", "DocumentModel", "Editor", "CutLine"], path: "Tests/RendererTests"),
         .testTarget(name: "DocumentModelTests", dependencies: ["DocumentModel", "CutLine"], path: "Tests/DocumentModelTests"),
