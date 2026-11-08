@@ -69,7 +69,7 @@ public final class CoreTextShaper: TextShaping {
             let rtl = isRightToLeft(paragraph, style.direction)
             var options: [CFString: Any] = [:]
             if style.direction != .auto { options[kCTTypesetterOptionForcedEmbeddingLevel] = rtl ? 1 : 0 }
-            let typesetter = CTTypesetterCreateWithAttributedStringAndOptions(attributed as CFAttributedString, options as CFDictionary)
+            guard let typesetter = CTTypesetterCreateWithAttributedStringAndOptions(attributed as CFAttributedString, options as CFDictionary) else { continue }
 
             var start = 0
             let limit = boxWidth ?? 1_000_000
