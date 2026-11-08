@@ -26,7 +26,7 @@ let package = Package(
         ),
         // Contour tracing, offset, Bezier fitting, SVG and DXF. Foundation only, so it also runs on Linux CI.
         .target(name: "CutLine", path: "Sources/CutLine"),
-        .target(name: "Export", dependencies: ["CutLine", "CPDFio"], path: "Sources/Export"),
+        .target(name: "Export", dependencies: ["CutLine", "CPDFio", "DocumentModel"], path: "Sources/Export"),
         .target(name: "DocumentModel", dependencies: ["CutLine"], path: "Sources/DocumentModel"),
         .target(name: "Editor", dependencies: ["DocumentModel", "CutLine"], path: "Sources/Editor"),
         // Metal canvas. Every file is guarded with canImport, so on Linux this target is empty.
@@ -44,6 +44,6 @@ let package = Package(
         .testTarget(name: "DocumentModelTests", dependencies: ["DocumentModel", "CutLine"], path: "Tests/DocumentModelTests"),
         .testTarget(name: "EditorTests", dependencies: ["Editor", "DocumentModel", "CutLine"], path: "Tests/EditorTests"),
         .testTarget(name: "CutLineTests", dependencies: ["CutLine"], path: "Tests/CutLineTests"),
-        .testTarget(name: "ExportTests", dependencies: ["Export", "CutLine", "CPDFio"], path: "Tests/ExportTests"),
+        .testTarget(name: "ExportTests", dependencies: ["Export", "CutLine", "CPDFio", "DocumentModel", "Products"], path: "Tests/ExportTests"),
     ]
 )
