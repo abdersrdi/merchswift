@@ -64,7 +64,7 @@ public final class CanvasCompositor {
     }
     """
 
-    public init?(device: MTLDevice, colorPixelFormat: MTLPixelFormat) {
+    public init?(device: MTLDevice, colorPixelFormat: MTLPixelFormat, sampleCount: Int = 1) {
         self.device = device
         guard let library = try? device.makeLibrary(source: Self.shaderSource, options: nil),
               let vf = library.makeFunction(name: "canvas_vertex"),
@@ -72,6 +72,7 @@ public final class CanvasCompositor {
         let d = MTLRenderPipelineDescriptor()
         d.vertexFunction = vf
         d.fragmentFunction = ff
+        d.rasterSampleCount = sampleCount
         let a = d.colorAttachments[0]!
         a.pixelFormat = colorPixelFormat
         a.isBlendingEnabled = true

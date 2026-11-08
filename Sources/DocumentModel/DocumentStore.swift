@@ -14,8 +14,19 @@ public final class DocumentStore {
     private let clock: () -> TimeInterval
     private let coalesceWindow: TimeInterval
 
-    /// Called after every change, undo and redo.
+    /// Called after every change, undo and redo. Kept for a single listener; use `observe` for several.
     public var onChange: (() -> Void)?
+    private var observers: [UUID: () -> Void] = [:]
+
+    /// Registers a listener for every change, undo and redo. Returns a token for `removeObserver`.
+    @discardableResult
+    public func observe(_ listener: @escaping () -> Void) -> UUID {
+        let id = UUID()
+        observers[id] = listener
+        return id
+    }
+
+    public func removeObserver(_ token: UUID) { observers[token] = nil }
 
     public init(document: Document, maxUndo: Int = 200, coalesceWindow: TimeInterval = 1.0,
                 clock: @escaping () -> TimeInterval = { Date().timeIntervalSinceReferenceDate }) {
@@ -32,13 +43,14 @@ public final class DocumentStore {
 
     /// Applies a change as one undo step. Repeated calls with the same `coalesceKey` within the window
     /// (a drag, a slider) merge into the first one.
-    public func perform(_ name: String, coalesceKey: String? = nil, _ change: (inout Document) -> Void) {
+    /// `window` overrides the pause allowed between merged calls; `.infinity` keeps a whole drag as one step.
+    public func perform(_ name: String, coalesceKey: String? = nil, window: TimeInterval? = nil, _ change: (inout Document) -> Void) {
         var next = document
         change(&next)
         guard next != document else { return }
 
         let now = clock()
-        if let key = coalesceKey, let last = undoStack.last, last.coalesceKey == key, now - last.time <= coalesceWindow {
+        if let key = coalesceKey, let last = undoStack.last, last.coalesceKey == key, now - last.time <= (window ?? coalesceWindow) {
             undoStack[undoStack.count - 1].time = now
         } else {
             undoStack.append(Entry(name: name, document: document, coalesceKey: coalesceKey, time: now))
@@ -63,8 +75,17 @@ public final class DocumentStore {
         changed()
     }
 
+    /// Drops the most recent undo step and restores the document from before it, leaving nothing to redo.
+    /// For abandoning a drag in progress.
+    public func revertLastChange() {
+        guard let entry = undoStack.popLast() else { return }
+        document = entry.document
+        changed()
+    }
+
     private func changed() {
         revision += 1
         onChange?()
+        for listener in observers.values { listener() }
     }
 }

@@ -293,4 +293,58 @@ final class CompositorTests: XCTestCase {
         measure { _ = LayerRasterizer.render(doc, assets: nil, tile: TileKey(level: 2, x: 0, y: 0)) }
     }
 }
+
+final class OverlayTests: XCTestCase {
+    func testLinesAndMarkersAreDrawnAtScreenSize() throws {
+        guard let device = MTLCreateSystemDefaultDevice() else { throw XCTSkip("No Metal device on this machine") }
+        let queue = try XCTUnwrap(device.makeCommandQueue())
+        let overlay = try XCTUnwrap(OverlayRenderer(device: device, colorPixelFormat: .bgra8Unorm))
+
+        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .bgra8Unorm, width: 200, height: 200, mipmapped: false)
+        d.usage = [.renderTarget, .shaderRead]
+        #if os(macOS)
+        d.storageMode = .managed
+        #else
+        d.storageMode = .shared
+        #endif
+        let tex = try XCTUnwrap(device.makeTexture(descriptor: d))
+
+        // Zoom 2: canvas (50, 50) is screen (100, 100). A 3-point blue line from canvas x=20 to 80 along y=50,
+        // and a 10-point white marker with a red edge at canvas (50, 20) -> screen (100, 40).
+        let vp = Viewport(zoom: 2, origin: Point(0, 0), viewSize: Size2(200, 200))
+        let items: [OverlayItem] = [
+            .polyline([Point(20, 50), Point(80, 50)], closed: false, color: RGBA(0, 0, 1), width: 3, dashed: false),
+            .marker(Point(50, 20), shape: .square, size: 10, fill: RGBA(1, 1, 1), stroke: RGBA(1, 0, 0)),
+            .rectFill(Rect2(x: 10, y: 70, width: 20, height: 20), color: RGBA(0, 1, 0, 0.5)),
+        ]
+        let pass = MTLRenderPassDescriptor()
+        pass.colorAttachments[0].texture = tex
+        pass.colorAttachments[0].loadAction = .clear
+        pass.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        pass.colorAttachments[0].storeAction = .store
+        let cb = try XCTUnwrap(queue.makeCommandBuffer())
+        let enc = try XCTUnwrap(cb.makeRenderCommandEncoder(descriptor: pass))
+        overlay.encode(into: enc, items: items, viewport: vp, device: device)
+        enc.endEncoding()
+        #if os(macOS)
+        if let blit = cb.makeBlitCommandEncoder() { blit.synchronize(resource: tex); blit.endEncoding() }
+        #endif
+        cb.commit(); cb.waitUntilCompleted()
+
+        var bytes = [UInt8](repeating: 0, count: 200 * 200 * 4)
+        tex.getBytes(&bytes, bytesPerRow: 800, from: MTLRegionMake2D(0, 0, 200, 200), mipmapLevel: 0)
+        func rgb(_ x: Int, _ y: Int) -> (Int, Int, Int) { let i = (y * 200 + x) * 4; return (Int(bytes[i + 2]), Int(bytes[i + 1]), Int(bytes[i])) }
+
+        let line = rgb(100, 100)                       // on the line
+        XCTAssertEqual(line.2, 255, accuracy: 2); XCTAssertEqual(line.0, 0, accuracy: 2)
+        XCTAssertEqual(rgb(100, 106).2, 0, accuracy: 2, "the line is 3 points wide, not 12")
+        let centre = rgb(100, 40)                      // marker fill
+        XCTAssertGreaterThan(centre.0, 250); XCTAssertGreaterThan(centre.1, 250)
+        let edge = rgb(100 - 5 - 1, 40)                // just inside the red outline ring
+        XCTAssertGreaterThan(edge.0, 200); XCTAssertLessThan(edge.1, 80)
+        let tint = rgb(40, 160)                        // half-transparent green over black
+        XCTAssertEqual(tint.1, 128, accuracy: 3); XCTAssertEqual(tint.0, 0, accuracy: 2)
+        XCTAssertEqual(rgb(10, 10).0, 0)
+    }
+}
 #endif
