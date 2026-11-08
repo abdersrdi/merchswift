@@ -9,6 +9,26 @@ final class Pixels: PixelSource {
     func pixels(for assetID: String) -> RGBAImage? { images[assetID] }
 }
 
+/// A plain formula standing in for an ICC conversion: enough to check the structure of a CMYK file.
+struct PlainCMYK: ColorConverting {
+    var conditionName: String { "Plain test CMYK" }
+    var profile: Data { Data(repeating: 0, count: 128) }
+    func cmyk(from c: RGBA) -> (c: Double, m: Double, y: Double, k: Double) {
+        let k = 1 - max(c.r, c.g, c.b)
+        guard k < 1 else { return (0, 0, 0, 1) }
+        return ((1 - c.r - k) / (1 - k), (1 - c.g - k) / (1 - k), (1 - c.b - k) / (1 - k), k)
+    }
+    func cmykPixels(_ image: RGBAImage) -> [UInt8] {
+        var out: [UInt8] = []
+        for i in 0..<(image.width * image.height) {
+            let p = image.pixels[(i * 4)..<(i * 4 + 4)].map { Double($0) / 255 }
+            let k = cmyk(from: RGBA(p[0], p[1], p[2]))
+            out += [k.c, k.m, k.y, k.k].map { UInt8(($0 * 255).rounded()) } + [image.pixels[i * 4 + 3]]
+        }
+        return out
+    }
+}
+
 final class DocumentExportTests: XCTestCase {
     private func tmp(_ name: String) -> URL {
         FileManager.default.temporaryDirectory.appendingPathComponent("merchswift-\(UUID().uuidString)-\(name)")
@@ -182,6 +202,30 @@ final class DocumentExportTests: XCTestCase {
         let text = String(decoding: try Data(contentsOf: url), as: UTF8.self)
         let images = try NSRegularExpression(pattern: #"/Subtype\s*/Image"#).numberOfMatches(in: text, range: NSRange(text.startIndex..., in: text))
         XCTAssertEqual(images, 2, "one picture and its alpha mask, not two copies")
+    }
+
+    // MARK: CMYK
+
+    func testCMYKContentUsesDeviceCMYKOperators() {
+        let l = Layer(name: "a", content: .shape(ShapeContent(path: .rect(Rect2(x: 0, y: 0, width: 4, height: 4)), fill: RGBA(1, 0, 0),
+                                                              stroke: Stroke(color: RGBA(0, 0, 1), width: 0.5))))
+        let text = PDFDescription.describe(Document(size: Size2(10, 10), layers: [l]), converter: PlainCMYK())
+        XCTAssertTrue(text.contains("\n0 1 1 0 k\n"), "red is magenta + yellow: " + text)
+        XCTAssertTrue(text.contains("1 1 0 0 K 0.5 w 1 J 1 j"), "blue is cyan + magenta: " + text)
+        XCTAssertFalse(text.contains("/CS0"), "no RGB colour space in a CMYK file")
+    }
+
+    func testWritesACMYKPDFWithAFourChannelOutputIntent() throws {
+        let (doc, pixels) = Self.sampleDocument()
+        let url = tmp("cmyk.pdf")
+        defer { try? FileManager.default.removeItem(at: url) }
+        try DocumentPDF.write(doc, assets: pixels, to: url, options: DocumentPDFOptions(title: "CMYK", colorMode: .cmyk(PlainCMYK())))
+        XCTAssertEqual(try StickerPDF.inspect(url).pageCount, 1)
+        let text = String(decoding: try Data(contentsOf: url), as: UTF8.self)
+        XCTAssertNotNil(text.range(of: #"/N\s+4"#, options: .regularExpression), "the ICC profile has four channels")
+        XCTAssertTrue(text.contains("Plain test CMYK"), "the printing condition is named")
+        XCTAssertNotNil(text.range(of: #"/CS\s*/DeviceCMYK"#, options: .regularExpression), "transparency groups are CMYK")
+        XCTAssertTrue(text.contains("/DeviceCMYK"))
     }
 
     // MARK: SVG

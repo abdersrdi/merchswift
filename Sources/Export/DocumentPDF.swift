@@ -18,11 +18,13 @@ public struct DocumentPDFOptions {
     /// Line width of the cut line in millimetres: a hairline.
     public var cutLineWidth: Double
     public var outputCondition: String
+    /// RGB with an sRGB output intent, or CMYK converted through an ICC profile.
+    public var colorMode: PDFColorMode
 
     public init(title: String = "MerchSwift design", creator: String = "MerchSwift", trim: Rect2? = nil, cutLine: CutPath? = nil,
-                cutLineWidth: Double = 0.0882, outputCondition: String = "sRGB IEC61966-2.1") {
+                cutLineWidth: Double = 0.0882, outputCondition: String = "sRGB IEC61966-2.1", colorMode: PDFColorMode = .rgb) {
         self.title = title; self.creator = creator; self.trim = trim; self.cutLine = cutLine
-        self.cutLineWidth = cutLineWidth; self.outputCondition = outputCondition
+        self.cutLineWidth = cutLineWidth; self.outputCondition = outputCondition; self.colorMode = colorMode
     }
 }
 
@@ -56,16 +58,20 @@ public enum DocumentPDF {
         pdfioFileSetCreationDate(pdf, time(nil))
 
         // Output intent and metadata.
-        let profile = SRGBProfile.data
+        var converter: ColorConverting?
+        if case .cmyk(let c) = options.colorMode { converter = c }
+        let profile = converter?.profile ?? SRGBProfile.data
+        let channels = converter == nil ? 3 : 4
+        let condition = converter?.conditionName ?? options.outputCondition
         let iccObj: OpaquePointer? = profile.withUnsafeBytes { raw in
-            pdfioFileCreateICCObjFromData(pdf, raw.bindMemory(to: UInt8.self).baseAddress, profile.count, 3)
+            pdfioFileCreateICCObjFromData(pdf, raw.bindMemory(to: UInt8.self).baseAddress, profile.count, channels)
         }
         guard let iccObj, let catalog = pdfioFileGetCatalog(pdf), let intent = pdfioDictCreate(pdf),
               let intents = pdfioArrayCreate(pdf) else { throw fail("could not set up the output intent") }
         pdfioDictSetName(intent, S("Type"), S("OutputIntent"))
         pdfioDictSetName(intent, S("S"), S("GTS_PDFX"))
-        pdfioDictSetString(intent, S("OutputConditionIdentifier"), S(options.outputCondition))
-        pdfioDictSetString(intent, S("Info"), S(options.outputCondition))
+        pdfioDictSetString(intent, S("OutputConditionIdentifier"), S(condition))
+        pdfioDictSetString(intent, S("Info"), S(condition))
         pdfioDictSetString(intent, S("RegistryName"), S("http://www.color.org"))
         pdfioDictSetObj(intent, S("DestOutputProfile"), iccObj)
         pdfioArrayAppendDict(intents, intent)
@@ -81,7 +87,12 @@ public enum DocumentPDF {
         pdfioDictSetObj(catalog, S("Metadata"), metaObj)
 
         // Resources shared by the page and the groups.
-        guard let iccColour = pdfioArrayCreateColorFromICCObj(pdf, iccObj) else { throw fail("could not create the colour space") }
+        // The colour space for RGB images; CMYK images use the device space.
+        var iccColour: OpaquePointer?
+        if converter == nil {
+            guard let c = pdfioArrayCreateColorFromICCObj(pdf, iccObj) else { throw fail("could not create the colour space") }
+            iccColour = c
+        }
         var imageObjects: [String: OpaquePointer] = [:]
 
         func iccSpaceArray() -> OpaquePointer? {
@@ -102,8 +113,16 @@ public enum DocumentPDF {
         func imageObject(_ assetID: String) -> OpaquePointer? {
             if let o = imageObjects[assetID] { return o }
             guard let img = fetch(assetID), img.width > 0, img.height > 0 else { return nil }
-            let obj: OpaquePointer? = img.pixels.withUnsafeBufferPointer { buf in
-                pdfioFileCreateImageObjFromData(pdf, buf.baseAddress, img.width, img.height, 3, iccColour, true, true)
+            let obj: OpaquePointer?
+            if let converter {
+                let data = converter.cmykPixels(img)
+                obj = data.withUnsafeBufferPointer { buf in
+                    pdfioFileCreateImageObjFromData(pdf, buf.baseAddress, img.width, img.height, 4, nil, true, true)
+                }
+            } else {
+                obj = img.pixels.withUnsafeBufferPointer { buf in
+                    pdfioFileCreateImageObjFromData(pdf, buf.baseAddress, img.width, img.height, 3, iccColour, true, true)
+                }
             }
             if let obj { imageObjects[assetID] = obj }
             return obj
@@ -112,7 +131,7 @@ public enum DocumentPDF {
         /// The resource dictionary for one scope, with its groups written out first.
         func materialize(_ scope: PDFScope, extraColourSpaces: [(String, OpaquePointer)] = []) throws -> OpaquePointer {
             guard let res = pdfioDictCreate(pdf), let cs = pdfioDictCreate(pdf), let icc0 = iccSpaceArray() else { throw fail("could not create resources") }
-            pdfioDictSetArray(cs, S("CS0"), icc0)
+            if converter == nil { pdfioDictSetArray(cs, S("CS0"), icc0) }
             for (name, array) in extraColourSpaces { pdfioDictSetArray(cs, S(name), array) }
             pdfioDictSetDict(res, S("ColorSpace"), cs)
 
@@ -151,7 +170,7 @@ public enum DocumentPDF {
             pdfioDictSetArray(d, S("BBox"), bbox)
             pdfioDictSetName(group, S("Type"), S("Group"))
             pdfioDictSetName(group, S("S"), S("Transparency"))
-            pdfioDictSetArray(group, S("CS"), groupSpace)
+            if converter == nil { pdfioDictSetArray(group, S("CS"), groupSpace) } else { pdfioDictSetName(group, S("CS"), S("DeviceCMYK")) }
             pdfioDictSetDict(d, S("Group"), group)
             pdfioDictSetDict(d, S("Resources"), try materialize(form.scope))
             guard let obj = pdfioFileCreateObj(pdf, d), let st = pdfioObjCreateStream(obj, PDFIO_FILTER_FLATE) else { throw fail("could not create a group") }
@@ -162,7 +181,7 @@ public enum DocumentPDF {
         }
 
         // The page.
-        let page = PDFContentBuilder.build(doc, hasImage: { fetch($0) != nil })
+        let page = PDFContentBuilder.build(doc, hasImage: { fetch($0) != nil }, converter: converter)
         var extra: [(String, OpaquePointer)] = []
         var cutContent = ""
         if let cut = options.cutLine, !cut.contours.isEmpty {

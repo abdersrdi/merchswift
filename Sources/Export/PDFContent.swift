@@ -30,6 +30,8 @@ final class PDFScope {
 }
 
 struct PDFContentBuilder {
+    /// Converts colours when the file is CMYK; nil writes RGB.
+    private var converter: ColorConverting?
     /// Lets the caller leave out images whose pixels are not available, so the file never refers to a missing one.
     private var hasImage: ((String) -> Bool)?
     private var imageCounter = 0
@@ -37,9 +39,10 @@ struct PDFContentBuilder {
     private var stateCounter = 0
 
     /// The page's content, plus everything it uses, from the visible layers.
-    static func build(_ doc: Document, hasImage: ((String) -> Bool)? = nil) -> PDFScope {
+    static func build(_ doc: Document, hasImage: ((String) -> Bool)? = nil, converter: ColorConverting? = nil) -> PDFScope {
         var builder = PDFContentBuilder()
         builder.hasImage = hasImage
+        builder.converter = converter
         let page = PDFScope()
         for layer in doc.layers { builder.emit(layer, into: page) }
         return page
@@ -97,15 +100,32 @@ struct PDFContentBuilder {
             scope.content += "/\(name) gs\n"
         }
         scope.content += Self.pathOps(path)
-        if let f = fill { scope.content += "/CS0 cs \(Self.color(f)) sc\n" }
+        if let f = fill { scope.content += fillColor(f) }
         if hasStroke, let st = stroke {
-            scope.content += "/CS0 CS \(Self.color(st.color)) SC \(Self.num(st.width)) w 1 J 1 j\n"
+            scope.content += strokeColor(st.color) + "\(Self.num(st.width)) w 1 J 1 j\n"
         }
         switch (fill != nil, hasStroke) {
         case (true, true): scope.content += "B\n"
         case (true, false): scope.content += "f\n"
         default: scope.content += "S\n"
         }
+    }
+
+    /// The operator that sets the fill colour: RGB through the ICC colour space, or DeviceCMYK.
+    private func fillColor(_ c: RGBA) -> String {
+        if let converter {
+            let k = converter.cmyk(from: c)
+            return "\(Self.num(k.c)) \(Self.num(k.m)) \(Self.num(k.y)) \(Self.num(k.k)) k\n"
+        }
+        return "/CS0 cs \(Self.color(c)) sc\n"
+    }
+
+    private func strokeColor(_ c: RGBA) -> String {
+        if let converter {
+            let k = converter.cmyk(from: c)
+            return "\(Self.num(k.c)) \(Self.num(k.m)) \(Self.num(k.y)) \(Self.num(k.k)) K "
+        }
+        return "/CS0 CS \(Self.color(c)) SC "
     }
 
     private mutating func state(alpha: Double, blend: BlendMode, in scope: PDFScope) -> String {
@@ -168,8 +188,8 @@ struct PDFContentBuilder {
 
 /// A readable dump of how a document turns into PDF content, for golden-file tests and debugging.
 public enum PDFDescription {
-    public static func describe(_ doc: Document) -> String {
-        let page = PDFContentBuilder.build(doc)
+    public static func describe(_ doc: Document, converter: ColorConverting? = nil) -> String {
+        let page = PDFContentBuilder.build(doc, converter: converter)
         var out = ""
         func dump(_ title: String, _ scope: PDFScope) {
             out += "== \(title)\n\(scope.content)"
