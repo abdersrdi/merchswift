@@ -1,5 +1,7 @@
 import DocumentModel
 import Editor
+import ExportKit
+import Products
 import Renderer
 import SwiftUI
 import Typography
@@ -20,8 +22,16 @@ final class EditorModel: ObservableObject {
     private var tokens: [UUID] = []
 
     let shaper = CoreTextShaper()
+    let pipeline: ExportPipeline
 
-    init(document: Document) {
+    /// Starts a blank design for a product, or sets one up around what is already on the canvas.
+    func newDocument(for preset: ProductPreset) {
+        tools.select([])
+        store.reset(to: preset.makeDocument())
+    }
+
+    init(document: Document, assets: AssetProvider? = nil) {
+        pipeline = ExportPipeline(assets: assets)
         FontLibrary.shared.registerBundledFonts()
         var doc = document
         doc.reshapeAllText(using: shaper)
@@ -36,7 +46,8 @@ final class EditorModel: ObservableObject {
 struct CanvasScreen: View {
     private let assets = DemoAssets()
     @StateObject private var controller = CanvasController()
-    @StateObject private var model = EditorModel(document: DemoDocument.make())
+    @StateObject private var model = EditorModel(document: DemoDocument.make(), assets: DemoAssets())
+    @State private var showPrint = false
     @State private var stats = CanvasStats()
     @State private var showInspector = true
 
@@ -50,6 +61,7 @@ struct CanvasScreen: View {
             hud.padding(12)
         }
         .overlay(alignment: .bottom) { toolbar.padding(.bottom, 14) }
+        .sheet(isPresented: $showPrint) { PrintPanel(model: model) }
         .overlay(alignment: .topTrailing) {
             if showInspector, !tools.selection.isEmpty { Inspector(model: model).padding(12) }
         }
@@ -83,6 +95,11 @@ struct CanvasScreen: View {
                 if tools.tool == .pen {
                     Button { tools.finishPath() } label: { Label("Finish path", systemImage: "checkmark") }
                 }
+
+                Menu {
+                    ForEach(ProductCatalog.all) { p in Button(p.name) { model.newDocument(for: p) } }
+                } label: { Label("New design", systemImage: "doc.badge.plus") }
+                Button { showPrint = true } label: { Label("Print checks and export", systemImage: "printer") }
 
                 Divider().frame(height: 22)
                 Menu {

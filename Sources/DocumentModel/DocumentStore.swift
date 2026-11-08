@@ -75,6 +75,14 @@ public final class DocumentStore {
         changed()
     }
 
+    /// Replaces the whole document (a new design, or one just opened) and forgets the undo history.
+    public func reset(to newDocument: Document) {
+        document = newDocument
+        undoStack.removeAll()
+        redoStack.removeAll()
+        changed()
+    }
+
     /// Drops the most recent undo step and restores the document from before it, leaving nothing to redo.
     /// For abandoning a drag in progress.
     public func revertLastChange() {

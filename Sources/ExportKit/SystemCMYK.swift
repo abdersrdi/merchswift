@@ -1,4 +1,4 @@
-#if canImport(CoreGraphics) && canImport(ColorSync)
+#if canImport(CoreGraphics)
 import CoreGraphics
 import DocumentModel
 import Export

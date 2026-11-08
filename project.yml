@@ -32,6 +32,12 @@ targets:
         product: Renderer
       - package: MerchSwift
         product: Typography
+      - package: MerchSwift
+        product: Products
+      - package: MerchSwift
+        product: Preflight
+      - package: MerchSwift
+        product: ExportKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.pdfswift.merchswift
@@ -63,6 +69,12 @@ targets:
         product: Renderer
       - package: MerchSwift
         product: Typography
+      - package: MerchSwift
+        product: Products
+      - package: MerchSwift
+        product: Preflight
+      - package: MerchSwift
+        product: ExportKit
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.pdfswift.merchswift

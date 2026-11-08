@@ -1,4 +1,4 @@
-#if canImport(CoreGraphics) && canImport(ImageIO) && canImport(ColorSync)
+#if canImport(CoreGraphics) && canImport(ImageIO)
 import CoreGraphics
 import CutLine
 import DocumentModel
