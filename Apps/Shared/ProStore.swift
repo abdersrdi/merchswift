@@ -23,7 +23,7 @@ final class ProStore: ObservableObject {
     func start() {
         guard updates == nil else { return }
         updates = Task { [weak self] in
-            for await result in Transaction.updates { await self?.handle(result) }
+            for await result in StoreKit.Transaction.updates { await self?.handle(result) }
         }
         Task {
             await refreshEntitlements()
@@ -80,7 +80,7 @@ final class ProStore: ObservableObject {
         }
     }
 
-    private func handle(_ result: VerificationResult<Transaction>) async {
+    private func handle(_ result: VerificationResult<StoreKit.Transaction>) async {
         guard case .verified(let transaction) = result else { return }
         await transaction.finish()
         await refreshEntitlements()
@@ -89,7 +89,7 @@ final class ProStore: ObservableObject {
     /// Reads what the Apple ID owns right now and updates the app's plan.
     func refreshEntitlements() async {
         var entitled = false
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             guard case .verified(let t) = result, ProProducts.grantsPro(t.productID), t.revocationDate == nil else { continue }
             if let expires = t.expirationDate, expires < Date() { continue }
             entitled = true
