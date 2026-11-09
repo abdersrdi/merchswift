@@ -21,9 +21,12 @@ public struct ExportOptions {
     public var dpi: Double?
     /// Writes the files even when the preflight found errors.
     public var ignorePreflightErrors = false
+    /// A layer drawn over the artwork in every file that shows the artwork (PNG, PDF and SVG). It never reaches the cut
+    /// line, the DXF or the print checks. Free exports carry the MerchSwift mark; nil leaves the artwork clean.
+    public var watermark: Layer?
 
-    public init(formats: [ExportFormat]? = nil, dpi: Double? = nil, ignorePreflightErrors: Bool = false) {
-        self.formats = formats; self.dpi = dpi; self.ignorePreflightErrors = ignorePreflightErrors
+    public init(formats: [ExportFormat]? = nil, dpi: Double? = nil, ignorePreflightErrors: Bool = false, watermark: Layer? = nil) {
+        self.formats = formats; self.dpi = dpi; self.ignorePreflightErrors = ignorePreflightErrors; self.watermark = watermark
     }
 }
 
@@ -86,6 +89,11 @@ public final class ExportPipeline {
         let report = Preflight.run(doc, preset: p, cutPath: cut, gamut: cmyk)
         if !report.canExport && !options.ignorePreflightErrors { throw ExportError.blocked(report) }
 
+        // What the artwork files show: the design, plus the watermark if there is one. The cut line and the print
+        // checks above were made from the design alone.
+        var shown = doc
+        if let mark = options.watermark { shown.layers.append(mark) }
+
         let base = Self.baseName(doc.title)
         let dpi = options.dpi ?? p?.dpi ?? doc.dpi
         let trim = p?.trimRect
@@ -95,20 +103,20 @@ public final class ExportPipeline {
             switch format {
             case .png:
                 let transparent = p?.transparentBackground ?? true
-                let data = try PNGExporter.export(doc, assets: assets, dpi: dpi, background: transparent ? nil : RGBA.white)
+                let data = try PNGExporter.export(shown, assets: assets, dpi: dpi, background: transparent ? nil : RGBA.white)
                 files.append(ExportedFile(name: "\(base).png", format: .png, data: data))
 
             case .pdfX4:
-                let data = try pdf(doc, DocumentPDFOptions(title: doc.title, trim: trim))
+                let data = try pdf(shown, DocumentPDFOptions(title: doc.title, trim: trim))
                 files.append(ExportedFile(name: "\(base).pdf", format: .pdfX4, data: data))
 
             case .pdfCutContour:
                 guard let cut else { throw ExportError.noCutLine }
-                let data = try pdf(doc, DocumentPDFOptions(title: doc.title, trim: trim, cutLine: cut))
+                let data = try pdf(shown, DocumentPDFOptions(title: doc.title, trim: trim, cutLine: cut))
                 files.append(ExportedFile(name: "\(base)-cut.pdf", format: .pdfCutContour, data: data))
 
             case .svg:
-                let svg = DocumentSVG.svg(doc, assets: pixelSource, cutLine: cut)
+                let svg = DocumentSVG.svg(shown, assets: pixelSource, cutLine: cut)
                 files.append(ExportedFile(name: "\(base).svg", format: .svg, data: Data(svg.utf8)))
 
             case .dxf:
@@ -118,7 +126,7 @@ public final class ExportPipeline {
 
             case .cmykPDF:
                 guard let cmyk else { throw ExportError.noCMYKProfile }
-                let data = try pdf(doc, DocumentPDFOptions(title: doc.title, trim: trim, cutLine: cut, colorMode: .cmyk(cmyk)))
+                let data = try pdf(shown, DocumentPDFOptions(title: doc.title, trim: trim, cutLine: cut, colorMode: .cmyk(cmyk)))
                 files.append(ExportedFile(name: "\(base)-cmyk.pdf", format: .cmykPDF, data: data))
             }
         }

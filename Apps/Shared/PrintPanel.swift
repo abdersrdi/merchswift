@@ -17,6 +17,9 @@ struct PrintPanel: View {
     @State private var overrideErrors = false
     @State private var exportedURL: URL?
     @State private var message: String?
+    @State private var watchingVideo = false
+    @ObservedObject private var policy = WatermarkPolicy.shared
+    @ObservedObject private var ads = AdHooks.shared
 
     private var preset: ProductPreset? { ProductCatalog.preset(for: model.store.document) }
 
@@ -48,6 +51,26 @@ struct PrintPanel: View {
                     Button { runChecks() } label: { Label("Check again", systemImage: "arrow.clockwise") }
                     if let r = report, r.issues.contains(where: { $0.fix != nil }) {
                         Button { fixAll() } label: { Label("Fix everything that can be fixed", systemImage: "wand.and.stars") }
+                    }
+                }
+
+                Section("Watermark") {
+                    if policy.isPro {
+                        Label("Pro: exports are always clean", systemImage: "checkmark.seal").foregroundStyle(.green)
+                    } else if policy.cleanExports > 0 {
+                        Label("Your next export has no watermark", systemImage: "checkmark.circle").foregroundStyle(.green)
+                    } else {
+                        Text("Free exports carry a small MerchSwift mark in the corner.").font(.callout)
+                        if ads.supportsRewarded {
+                            Button { watchVideo() } label: {
+                                if watchingVideo { ProgressView() }
+                                else { Label(ads.rewardedAvailable ? "Watch a short video to remove it" : "Video loading…", systemImage: "play.rectangle") }
+                            }
+                            .disabled(!ads.rewardedAvailable || watchingVideo)
+                            Text("One video removes the mark from one export.").font(.caption).foregroundStyle(.secondary)
+                        } else {
+                            Text("Pro removes it, and it will be available soon.").font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                 }
 
@@ -100,20 +123,37 @@ struct PrintPanel: View {
         runChecks()
     }
 
+    private func watchVideo() {
+        watchingVideo = true
+        ads.showRewarded { earned in
+            watchingVideo = false
+            if earned { policy.earnCleanExport() }
+        }
+    }
+
     private func export() {
         exporting = true
         message = nil
         exportedURL = nil
         let doc = model.store.document
         let pipeline = model.pipeline
-        let options = ExportOptions(dpi: fineDetail ? 600 : nil, ignorePreflightErrors: overrideErrors)
+        // A free export carries the mark unless a watched video earned a clean one.
+        let marked = policy.shouldWatermark
+        let mark: Layer? = marked ? Watermark.layer(for: doc, shaper: model.shaper) : nil
+        let usedVideo = !policy.isPro && policy.cleanExports > 0
+        let options = ExportOptions(dpi: fineDetail ? 600 : nil, ignorePreflightErrors: overrideErrors, watermark: mark)
         Task.detached(priority: .userInitiated) {
             do {
                 let zip = try pipeline.exportArchive(doc, options: options)
                 let name = (doc.title.isEmpty ? "design" : doc.title).replacingOccurrences(of: "/", with: "-")
                 let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).zip")
                 try zip.write(to: url)
-                await MainActor.run { exportedURL = url; message = "Ready: \(ByteCountFormatter.string(fromByteCount: Int64(zip.count), countStyle: .file))"; exporting = false }
+                await MainActor.run {
+                    if usedVideo { policy.usedCleanExport() }
+                    exportedURL = url
+                    message = "Ready: \(ByteCountFormatter.string(fromByteCount: Int64(zip.count), countStyle: .file))"
+                    exporting = false
+                }
             } catch {
                 await MainActor.run { message = "\(error)"; exporting = false }
             }
