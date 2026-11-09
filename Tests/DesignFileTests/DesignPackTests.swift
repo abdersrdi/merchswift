@@ -35,14 +35,15 @@ final class DesignPackTests: XCTestCase {
 
     func testExportThenImportGivesTheSameDesign() throws {
         let lib = DesignLibrary(root: root.appendingPathComponent("a"))
-        try lib.save(design(), assets: ["p1": png], thumbnail: png + [9], id: "one")
+        let original = design()
+        try lib.save(original, assets: ["p1": png], thumbnail: png + [9], id: "one")
         let data = try lib.exportData(id: "one")
 
         let other = DesignLibrary(root: root.appendingPathComponent("b"))           // another device
         let id = try other.importData(data)
         XCTAssertNotEqual(id, "one")
         let back = try other.load(id: id)
-        XCTAssertEqual(back.document, design())
+        XCTAssertEqual(back.document, original)
         XCTAssertEqual(back.assets["p1"], png)
         XCTAssertNotNil(other.entries().first { $0.id == id }?.thumbnailURL)
         XCTAssertEqual(other.entries().map(\.title), ["Pack me"])
