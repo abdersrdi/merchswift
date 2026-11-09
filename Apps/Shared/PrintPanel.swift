@@ -23,6 +23,7 @@ struct PrintPanel: View {
     @State private var customWidth = "4500"
     @State private var customHeight = "5400"
     @State private var marketURL: URL?
+    @State private var showPaywall = false
     @ObservedObject private var policy = WatermarkPolicy.shared
     @ObservedObject private var ads = AdHooks.shared
 
@@ -81,7 +82,7 @@ struct PrintPanel: View {
                             .disabled(!ads.rewardedAvailable || watchingVideo)
                             Text("One video removes the mark from one export.").font(.caption).foregroundStyle(.secondary)
                         } else {
-                            Text("Pro removes it, and it will be available soon.").font(.caption).foregroundStyle(.secondary)
+                            Button { showPaywall = true } label: { Label("Go Pro to remove it", systemImage: "star") }
                         }
                     }
                 }
@@ -136,6 +137,7 @@ struct PrintPanel: View {
             #endif
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
             .onAppear(perform: runChecks)
+            .sheet(isPresented: $showPaywall) { PaywallView() }
         }
         #if os(macOS)
         .frame(minWidth: 480, minHeight: 560)
@@ -181,8 +183,9 @@ struct PrintPanel: View {
     /// How many free exports are left, and what to do when there are none.
     @ViewBuilder private var allowanceRows: some View {
         if policy.requiresPro && !policy.isPro {
-            Label("Exporting on the Mac needs Pro, which will be available soon.", systemImage: "lock")
+            Label("Exporting on the Mac needs Pro.", systemImage: "lock")
                 .font(.footnote).foregroundStyle(.secondary)
+            Button { showPaywall = true } label: { Label("Get Pro", systemImage: "star") }
         } else if !policy.isPro {
             Text(policy.exportsLeft == 1 ? "1 export left" : "\(policy.exportsLeft) exports left (5 free each month)")
                 .font(.footnote).foregroundStyle(.secondary)
@@ -193,7 +196,7 @@ struct PrintPanel: View {
                     }
                     .disabled(!ads.rewardedAvailable || watchingVideo)
                 } else {
-                    Text("Pro removes the limit.").font(.footnote).foregroundStyle(.secondary)
+                    Button { showPaywall = true } label: { Label("Go Pro for unlimited exports", systemImage: "star") }
                 }
             }
         }

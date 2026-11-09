@@ -5,6 +5,7 @@ struct MerchSwiftApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .task { ProStore.shared.start() }
                 .task { await AdsBootstrap.start() }
         }
         #if os(macOS)

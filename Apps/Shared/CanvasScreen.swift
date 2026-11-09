@@ -50,6 +50,8 @@ struct CanvasScreen: View {
     @StateObject private var session: DesignSession
     @State private var showPrint = false
     @State private var showDesigns = false
+    @State private var showPaywall = false
+    @ObservedObject private var policy = WatermarkPolicy.shared
     @State private var stats = CanvasStats()
     @State private var showInspector = true
 
@@ -71,6 +73,7 @@ struct CanvasScreen: View {
         .overlay(alignment: .bottom) { toolbar.padding(.bottom, 14) }
         .sheet(isPresented: $showPrint) { PrintPanel(model: model) }
         .sheet(isPresented: $showDesigns) { DesignsView(session: session, model: model) }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
         .overlay(alignment: .topTrailing) {
             if showInspector, !tools.selection.isEmpty { Inspector(model: model).padding(12) }
         }
@@ -109,6 +112,7 @@ struct CanvasScreen: View {
                     ForEach(ProductCatalog.all) { p in Button(p.name) { Task { await session.newDesign(for: p) } } }
                 } label: { Label("New design", systemImage: "doc.badge.plus") }
                 Button { showDesigns = true } label: { Label("My designs", systemImage: "folder") }
+                Button { showPaywall = true } label: { Label(policy.isPro ? "Pro" : "Go Pro", systemImage: policy.isPro ? "star.fill" : "star") }
                 PhotoMenu(model: model)
                 Button { showPrint = true } label: { Label("Print checks and export", systemImage: "printer") }
 
