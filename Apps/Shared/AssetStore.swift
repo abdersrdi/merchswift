@@ -32,6 +32,14 @@ final class AssetStore: AssetProvider {
         return nil
     }
 
+    /// Replaces everything with the pictures of a design that was just opened, under the ids the design uses. Pictures of
+    /// the design that was open before are dropped, so memory does not grow with every design opened.
+    func replaceAll(with images: [String: RGBAImage]) {
+        lock.lock(); defer { lock.unlock() }
+        pixels = images
+        cgImages = [:]
+    }
+
     /// Stores a picture and returns its new id.
     func add(_ image: RGBAImage) -> String {
         let id = UUID().uuidString

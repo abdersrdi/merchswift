@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "Preflight", targets: ["Preflight"]),
         .library(name: "ExportKit", targets: ["ExportKit"]),
         .library(name: "ImageTools", targets: ["ImageTools"]),
+        .library(name: "DesignFile", targets: ["DesignFile"]),
     ],
     targets: [
         // PDFio (Apache 2.0) by Michael R Sweet, vendored. Used for PDF/X-4 output.
@@ -49,6 +50,9 @@ let package = Package(
         // runs it); the Apple-only parts (Vision, Core ML) are guarded with canImport.
         .target(name: "ImageTools", dependencies: ["Export", "CutLine", "DocumentModel"], path: "Sources/ImageTools"),
         .testTarget(name: "ImageToolsTests", dependencies: ["ImageTools", "Export", "CutLine", "DocumentModel"], path: "Tests/ImageToolsTests"),
+        // Saving and opening designs: a .merchswift folder with the design as JSON and every picture as PNG. Plain Swift.
+        .target(name: "DesignFile", dependencies: ["DocumentModel", "CutLine"], path: "Sources/DesignFile"),
+        .testTarget(name: "DesignFileTests", dependencies: ["DesignFile", "DocumentModel", "CutLine"], path: "Tests/DesignFileTests"),
         .testTarget(name: "ProductsTests", dependencies: ["Products", "DocumentModel", "CutLine"], path: "Tests/ProductsTests"),
         .testTarget(name: "PreflightTests", dependencies: ["Preflight", "Products", "DocumentModel", "CutLine", "Editor"], path: "Tests/PreflightTests"),
         .testTarget(name: "TypographyTests", dependencies: ["Typography", "Renderer", "DocumentModel", "Editor", "CutLine"], path: "Tests/TypographyTests"),

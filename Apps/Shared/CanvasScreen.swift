@@ -46,13 +46,21 @@ final class EditorModel: ObservableObject {
 struct CanvasScreen: View {
     private let assets = AssetStore.shared
     @StateObject private var controller = CanvasController()
-    @StateObject private var model = EditorModel(document: DemoDocument.make(), assets: AssetStore.shared)
+    @StateObject private var model: EditorModel
+    @StateObject private var session: DesignSession
     @State private var showPrint = false
+    @State private var showDesigns = false
     @State private var stats = CanvasStats()
     @State private var showInspector = true
 
     private var tools: ToolController { model.tools }
     private var store: DocumentStore { model.store }
+
+    init() {
+        let m = EditorModel(document: DemoDocument.make(), assets: AssetStore.shared)
+        _model = StateObject(wrappedValue: m)
+        _session = StateObject(wrappedValue: DesignSession(model: m))
+    }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -62,6 +70,7 @@ struct CanvasScreen: View {
         }
         .overlay(alignment: .bottom) { toolbar.padding(.bottom, 14) }
         .sheet(isPresented: $showPrint) { PrintPanel(model: model) }
+        .sheet(isPresented: $showDesigns) { DesignsView(session: session, model: model) }
         .overlay(alignment: .topTrailing) {
             if showInspector, !tools.selection.isEmpty { Inspector(model: model).padding(12) }
         }
@@ -97,8 +106,9 @@ struct CanvasScreen: View {
                 }
 
                 Menu {
-                    ForEach(ProductCatalog.all) { p in Button(p.name) { model.newDocument(for: p) } }
+                    ForEach(ProductCatalog.all) { p in Button(p.name) { Task { await session.newDesign(for: p) } } }
                 } label: { Label("New design", systemImage: "doc.badge.plus") }
+                Button { showDesigns = true } label: { Label("My designs", systemImage: "folder") }
                 PhotoMenu(model: model)
                 Button { showPrint = true } label: { Label("Print checks and export", systemImage: "printer") }
 

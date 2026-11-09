@@ -53,6 +53,8 @@ targets:
         product: ExportKit
       - package: MerchSwift
         product: ImageTools
+      - package: MerchSwift
+        product: DesignFile
     info:
       path: Apps/iOS/Info.plist
       properties:
@@ -146,6 +148,8 @@ targets:
         product: ExportKit
       - package: MerchSwift
         product: ImageTools
+      - package: MerchSwift
+        product: DesignFile
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.pdfswift.merchswift
