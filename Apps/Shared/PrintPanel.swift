@@ -107,6 +107,8 @@ struct PrintPanel: View {
                             .font(.caption).foregroundStyle(.secondary)
                         Text(t.note).font(.caption2).foregroundStyle(.secondary)
                     }
+                    Text("Site names are used only to say which size fits. MerchSwift is not affiliated with or endorsed by any of them.")
+                        .font(.caption2).foregroundStyle(.secondary)
                     Button { exportMarketplace() } label: {
                         if exporting { ProgressView() } else { Label("Export PNG for this site", systemImage: "square.and.arrow.up") }
                     }

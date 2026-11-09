@@ -71,3 +71,16 @@ jobs:
             -destination 'platform=macOS' \
             CODE_SIGNING_ALLOWED=NO build | tail -25
           exit ${PIPESTATUS[0]}
+      # The App Store builds are Release builds, which leave out the development-only screens, so they must compile too.
+      - name: Build iOS (Release)
+        run: |
+          xcodebuild -project MerchSwift.xcodeproj -scheme MerchSwift -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -25
+          exit ${PIPESTATUS[0]}
+      - name: Build macOS (Release)
+        run: |
+          xcodebuild -project MerchSwift.xcodeproj -scheme MerchSwiftMac -configuration Release \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO build | tail -25
+          exit ${PIPESTATUS[0]}

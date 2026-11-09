@@ -59,7 +59,13 @@ struct CanvasScreen: View {
     private var store: DocumentStore { model.store }
 
     init() {
-        let m = EditorModel(document: DemoDocument.make(), assets: AssetStore.shared)
+        // A real first launch starts with a blank T-shirt design. The 60-layer test design is for development builds only.
+        #if DEBUG
+        let start = DemoDocument.make()
+        #else
+        let start = ProductCatalog.tshirtFront.makeDocument(title: "My design")
+        #endif
+        let m = EditorModel(document: start, assets: AssetStore.shared)
         _model = StateObject(wrappedValue: m)
         _session = StateObject(wrappedValue: DesignSession(model: m))
     }
@@ -68,7 +74,9 @@ struct CanvasScreen: View {
         ZStack(alignment: .topLeading) {
             CanvasHost(tools: tools, assets: assets, controller: controller) { stats = $0 }
                 .ignoresSafeArea(edges: .bottom)
+            #if DEBUG
             hud.padding(12)
+            #endif
         }
         .overlay(alignment: .bottom) { toolbar.padding(.bottom, 14) }
         .sheet(isPresented: $showPrint) { PrintPanel(model: model) }
@@ -287,11 +295,15 @@ struct TextInspector: View {
 
 struct RootView: View {
     var body: some View {
+        #if DEBUG
         TabView {
             CanvasScreen()
                 .tabItem { Label("Canvas", systemImage: "square.on.square.dashed") }
             ProofView()
                 .tabItem { Label("Cut proof", systemImage: "scissors") }
         }
+        #else
+        CanvasScreen()
+        #endif
     }
 }
