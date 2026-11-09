@@ -127,6 +127,40 @@ final class PhotoEditor: ObservableObject {
         }
     }
 
+    /// Enlarges a picture so it prints at `targetDPI` at its current size on the design. The layer keeps its size; it just gets
+    /// more pixels. `done` runs when the work has finished, whether or not anything changed.
+    func upscale(layer id: UUID, targetDPI: Double, done: @escaping () -> Void) {
+        guard !busy, let layer = model.store.document.layer(id: id), case .image(let content) = layer.content,
+              let world = model.store.document.worldTransform(of: id), let source = assets.pixels(for: content.assetID) else {
+            message = "This picture cannot be enlarged."; done(); return
+        }
+        let sx = (world.a * world.a + world.b * world.b).squareRoot()
+        let sy = (world.c * world.c + world.d * world.d).squareRoot()
+        let wInches = content.size.width * sx / 25.4, hInches = content.size.height * sy / 25.4
+        guard wInches > 0, hInches > 0 else { done(); return }
+        let effective = min(Double(source.width) / wInches, Double(source.height) / hInches)
+        let factor = Upscaler.factor(effectiveDPI: effective, targetDPI: targetDPI)
+        guard factor > 1 else { done(); return }
+        busy = true
+        message = nil
+        Task.detached(priority: .userInitiated) {
+            let big = Upscaler.upscale(source, factor: factor)
+            await MainActor.run {
+                defer { self.busy = false; done() }
+                guard big.width > source.width else { self.message = "This picture is already as large as the app can make it."; return }
+                let newID = self.assets.add(big)
+                self.model.store.perform("Upscale picture") { doc in
+                    _ = doc.update(id: id) { l in
+                        l.content = .image(ImageContent(assetID: newID, size: content.size, pixelWidth: big.width, pixelHeight: big.height))
+                    }
+                }
+                if Double(big.width) / Double(source.width) + 0.01 < factor {
+                    self.message = "Enlarged as far as the app allows. It may still print a little soft at this size."
+                }
+            }
+        }
+    }
+
     private func finish(_ edit: PhotoEdit, _ id: UUID, _ old: ImageContent, _ image: RGBAImage, _ padding: Int, _ mmPerPixel: Double) {
         defer { busy = false }
         let newID = assets.add(image)

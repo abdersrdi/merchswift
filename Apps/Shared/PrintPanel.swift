@@ -18,8 +18,14 @@ struct PrintPanel: View {
     @State private var exportedURL: URL?
     @State private var message: String?
     @State private var watchingVideo = false
+    @StateObject private var photos: PhotoEditor
     @ObservedObject private var policy = WatermarkPolicy.shared
     @ObservedObject private var ads = AdHooks.shared
+
+    init(model: EditorModel) {
+        self.model = model
+        _photos = StateObject(wrappedValue: PhotoEditor(model: model))
+    }
 
     private var preset: ProductPreset? { ProductCatalog.preset(for: model.store.document) }
 
@@ -42,6 +48,8 @@ struct PrintPanel: View {
 
                 Section("Print checks") {
                     if checking { ProgressView("Checking…") }
+                    if photos.busy { ProgressView("Enlarging the picture…") }
+                    if let m = photos.message { Text(m).font(.footnote).foregroundStyle(.secondary) }
                     else if let r = report {
                         if r.issues.isEmpty {
                             Label("No problems found", systemImage: "checkmark.seal").foregroundStyle(.green)
@@ -115,6 +123,10 @@ struct PrintPanel: View {
 
     private func apply(_ issue: PreflightIssue) {
         guard let fix = issue.fix else { return }
+        if case .upscaleImage(let layer, let dpi) = fix {
+            photos.upscale(layer: layer, targetDPI: dpi) { runChecks() }
+            return
+        }
         model.store.perform("Fix: \(issue.title)") { doc in _ = Preflight.apply(fix, to: &doc, shaper: model.shaper) }
         runChecks()
     }
@@ -196,11 +208,10 @@ private struct IssueRow: View {
                 Text(issue.title).font(.subheadline.weight(.semibold))
             }
             Text(issue.detail).font(.caption).foregroundStyle(.secondary)
-            if let fix = issue.fix, let title = issue.fixTitle {
+            if issue.fix != nil, let title = issue.fixTitle {
                 Button(title, action: apply)
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .disabled({ if case .upscaleImage = fix { return true } else { return false } }())
             }
         }
         .padding(.vertical, 2)
