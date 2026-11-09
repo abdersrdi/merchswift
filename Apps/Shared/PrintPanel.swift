@@ -81,7 +81,8 @@ struct PrintPanel: View {
                     Button { export() } label: {
                         if exporting { ProgressView() } else { Label("Export all files (ZIP)", systemImage: "square.and.arrow.up.on.square") }
                     }
-                    .disabled(exporting || (report.map { !$0.canExport } ?? false) && !overrideErrors)
+                    .disabled(exporting || !policy.canExport || (report.map { !$0.canExport } ?? false) && !overrideErrors)
+                    allowanceRows
                     if let url = exportedURL {
                         ShareLink(item: url) { Label("Share \(url.lastPathComponent)", systemImage: "square.and.arrow.up") }
                     }
@@ -123,11 +124,33 @@ struct PrintPanel: View {
         runChecks()
     }
 
-    private func watchVideo() {
+    private func watchVideo(forExtraExport: Bool = false) {
         watchingVideo = true
         ads.showRewarded { earned in
             watchingVideo = false
-            if earned { policy.earnCleanExport() }
+            guard earned else { return }
+            if forExtraExport { policy.earnExtraExport() } else { policy.earnCleanExport() }
+        }
+    }
+
+    /// How many free exports are left, and what to do when there are none.
+    @ViewBuilder private var allowanceRows: some View {
+        if policy.requiresPro && !policy.isPro {
+            Label("Exporting on the Mac needs Pro, which will be available soon.", systemImage: "lock")
+                .font(.footnote).foregroundStyle(.secondary)
+        } else if !policy.isPro {
+            Text(policy.exportsLeft == 1 ? "1 export left" : "\(policy.exportsLeft) exports left (5 free each month)")
+                .font(.footnote).foregroundStyle(.secondary)
+            if policy.exportsLeft == 0 {
+                if ads.supportsRewarded {
+                    Button { watchVideo(forExtraExport: true) } label: {
+                        Label(ads.rewardedAvailable ? "Watch a short video for one more export" : "Video loading…", systemImage: "play.rectangle")
+                    }
+                    .disabled(!ads.rewardedAvailable || watchingVideo)
+                } else {
+                    Text("Pro removes the limit.").font(.footnote).foregroundStyle(.secondary)
+                }
+            }
         }
     }
 
@@ -149,7 +172,7 @@ struct PrintPanel: View {
                 let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).zip")
                 try zip.write(to: url)
                 await MainActor.run {
-                    if usedVideo { policy.usedCleanExport() }
+                    policy.exportFinished(wasClean: usedVideo)
                     exportedURL = url
                     message = "Ready: \(ByteCountFormatter.string(fromByteCount: Int64(zip.count), countStyle: .file))"
                     exporting = false
