@@ -57,6 +57,8 @@ final class AdsManager: NSObject, ObservableObject {
         try? await Task.sleep(nanoseconds: 1_200_000_000)    // let the first screen settle before any prompt appears
         await gatherConsent()
         privacyOptionsRequired = UMPConsentInformation.sharedInstance.privacyOptionsRequirementStatus == .required
+        hooks.privacyOptionsRequired = privacyOptionsRequired
+        hooks.showPrivacyOptions = { [weak self] in self?.presentPrivacyOptions() }
         _ = await ATTrackingManager.requestTrackingAuthorization()
         guard UMPConsentInformation.sharedInstance.canRequestAds else { return }
         GADMobileAds.sharedInstance().start(completionHandler: nil)

@@ -15,6 +15,8 @@ struct DesignsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
     @State private var showImport = false
+    @State private var showAbout = false
+    @ObservedObject private var ads = AdHooks.shared
 
     var body: some View {
         NavigationStack {
@@ -54,8 +56,15 @@ struct DesignsView: View {
                     .onDelete { offsets in offsets.map { session.entries[$0].id }.forEach(session.delete) }
                     Button { showImport = true } label: { Label("Import a design file", systemImage: "square.and.arrow.down") }
                 }
+                Section("More") {
+                    if ads.privacyOptionsRequired {
+                        Button { ads.showPrivacyOptions() } label: { Label("Ad privacy choices", systemImage: "hand.raised") }
+                    }
+                    Button { showAbout = true } label: { Label("About and licences", systemImage: "info.circle") }
+                }
                 if session.busy { ProgressView() }
             }
+            .sheet(isPresented: $showAbout) { AcknowledgementsView() }
             .navigationTitle("My designs")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)

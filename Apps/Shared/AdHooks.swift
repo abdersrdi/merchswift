@@ -13,6 +13,10 @@ final class AdHooks: ObservableObject {
     @Published var rewardedAvailable = false
     /// Plays a video. The completion gets true only if the viewer watched it to the end and earned the reward.
     var showRewarded: (@escaping (Bool) -> Void) -> Void = { $0(false) }
+    /// True where the law requires an entry point for changing the consent choice again (the EEA and UK).
+    @Published var privacyOptionsRequired = false
+    /// Opens Google's form for changing the consent choice.
+    var showPrivacyOptions: () -> Void = {}
 
     private init() {}
 }
