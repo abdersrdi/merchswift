@@ -292,24 +292,33 @@ public enum Preflight {
         }
     }
 
+    /// Keeps things out of the product's restricted zones: the handle on a mug, the camera on a case.
     static func checkMugHandle(_ leaf: Leaf, _ preset: ProductPreset, _ out: inout [PreflightIssue]) {
         guard !preset.restrictedZones.isEmpty, let b = leaf.bounds, !isBackgroundLike(leaf, preset) else { return }
-        guard let zone = preset.restrictedZones.first(where: { overlap($0, b) > 1e-6 }) else { return }
-        _ = zone
-        // The free band is between the zones; slide the layer into it if it fits.
-        let sorted = preset.restrictedZones.sorted { $0.minX < $1.minX }
+        guard let hit = preset.restrictedZones.first(where: { overlap($0, b) > 1e-6 }) else { return }
         var fix: PreflightFix?
+        let sorted = preset.restrictedZones.sorted { $0.minX < $1.minX }
+        let canvas = preset.canvasRect
         if sorted.count >= 2 {
+            // Several zones (the two ends of a mug wrap): slide into the free band between them.
             let free0 = sorted[0].maxX, free1 = sorted[sorted.count - 1].minX
             if b.width <= free1 - free0 {
                 var dx = 0.0
                 if b.minX < free0 { dx = free0 - b.minX } else if b.maxX > free1 { dx = free1 - b.maxX }
                 if dx != 0 { fix = .move(layer: leaf.layer.id, dx: dx, dy: 0) }
             }
+        } else {
+            // One zone (a camera): move just below it, or just beside it, if the layer still fits on the canvas.
+            let gap = 2.0
+            let dy = hit.maxY - b.minY + gap
+            let dx = hit.maxX - b.minX + gap
+            if b.maxY + dy <= canvas.maxY - preset.bleed { fix = .move(layer: leaf.layer.id, dx: 0, dy: dy) }
+            else if b.maxX + dx <= canvas.maxX - preset.bleed, hit.width < canvas.width * 0.9 { fix = .move(layer: leaf.layer.id, dx: dx, dy: 0) }
         }
-        out.append(issue(.mugHandle, .warning, layer: leaf.layer, title: "\"\(leaf.layer.name)\" is where the handle goes",
-                         detail: "The ends of the wrap meet beside the handle, and the handle hides or distorts what is printed there. Keep text and faces out of the handle zone.",
-                         fix: fix, fixTitle: fix == nil ? nil : "Move away from the handle"))
+        out.append(issue(.mugHandle, .warning, layer: leaf.layer,
+                         title: "\"\(leaf.layer.name)\" is where the \(preset.restrictedZoneName) goes",
+                         detail: preset.restrictedZoneAdvice,
+                         fix: fix, fixTitle: fix == nil ? nil : "Move it out of the way"))
     }
 
     static func overlap(_ a: Rect2, _ b: Rect2) -> Double {

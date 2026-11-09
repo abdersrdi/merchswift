@@ -4,6 +4,8 @@ import Foundation
 
 public enum ProductKind: String, Codable, CaseIterable {
     case dieCutSticker, kissCutSheet, tshirt, mug
+    /// A flat print file for the back of a phone or tablet case.
+    case deviceCase
 }
 
 public enum ExportFormat: String, Codable, CaseIterable {
@@ -43,13 +45,20 @@ public struct ProductPreset: Codable, Equatable, Identifiable {
     public var cutLine: CutLineSettings?
     /// What a person should check with their supplier before relying on this preset.
     public var note: String
+    /// What the restricted zones are called in messages: "handle" on a mug, "camera" on a case.
+    public var restrictedZoneName: String
+    /// What to tell the person about keeping artwork out of a restricted zone.
+    public var restrictedZoneAdvice: String
 
     public init(id: String, name: String, kind: ProductKind, trim: Size2, bleed: Double, safeInset: Double, dpi: Double = 300,
                 transparentBackground: Bool = false, requiresFullBleed: Bool = false, restrictedZones: [Rect2] = [],
-                exports: [ExportFormat], cutLine: CutLineSettings? = nil, note: String = "") {
+                exports: [ExportFormat], cutLine: CutLineSettings? = nil, note: String = "",
+                restrictedZoneName: String = "handle",
+                restrictedZoneAdvice: String = "The ends of the wrap meet beside the handle, and the handle hides or distorts what is printed there. Keep text and faces out of the handle zone.") {
         self.id = id; self.name = name; self.kind = kind; self.trim = trim; self.bleed = bleed; self.safeInset = safeInset
         self.dpi = dpi; self.transparentBackground = transparentBackground; self.requiresFullBleed = requiresFullBleed
         self.restrictedZones = restrictedZones; self.exports = exports; self.cutLine = cutLine; self.note = note
+        self.restrictedZoneName = restrictedZoneName; self.restrictedZoneAdvice = restrictedZoneAdvice
     }
 
     public var canvas: Size2 { Size2(trim.width + 2 * bleed, trim.height + 2 * bleed) }
@@ -134,7 +143,7 @@ public enum ProductCatalog {
         mug11, mug15, mugLatte,
     ]
 
-    public static func preset(id: String) -> ProductPreset? { all.first { $0.id == id } }
+    public static func preset(id: String) -> ProductPreset? { all.first { $0.id == id } ?? DeviceCaseCatalog.preset(id: id) }
 
     /// The preset a document was made for, including custom sticker sizes whose id carries the size.
     public static func preset(for document: Document) -> ProductPreset? {
