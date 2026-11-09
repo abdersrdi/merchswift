@@ -51,6 +51,8 @@ targets:
         product: Preflight
       - package: MerchSwift
         product: ExportKit
+      - package: MerchSwift
+        product: ImageTools
     info:
       path: Apps/iOS/Info.plist
       properties:
@@ -142,6 +144,8 @@ targets:
         product: Preflight
       - package: MerchSwift
         product: ExportKit
+      - package: MerchSwift
+        product: ImageTools
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: cc.pdfswift.merchswift

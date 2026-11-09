@@ -44,9 +44,9 @@ final class EditorModel: ObservableObject {
 }
 
 struct CanvasScreen: View {
-    private let assets = DemoAssets()
+    private let assets = AssetStore.shared
     @StateObject private var controller = CanvasController()
-    @StateObject private var model = EditorModel(document: DemoDocument.make(), assets: DemoAssets())
+    @StateObject private var model = EditorModel(document: DemoDocument.make(), assets: AssetStore.shared)
     @State private var showPrint = false
     @State private var stats = CanvasStats()
     @State private var showInspector = true
@@ -99,6 +99,7 @@ struct CanvasScreen: View {
                 Menu {
                     ForEach(ProductCatalog.all) { p in Button(p.name) { model.newDocument(for: p) } }
                 } label: { Label("New design", systemImage: "doc.badge.plus") }
+                PhotoMenu(model: model)
                 Button { showPrint = true } label: { Label("Print checks and export", systemImage: "printer") }
 
                 Divider().frame(height: 22)
