@@ -3,7 +3,7 @@ import CutLine
 import Foundation
 
 /// 8-bit RGBA pixels, not premultiplied, row 0 at the top.
-public struct RGBAImage {
+public struct RGBAImage: Equatable {
     public let width: Int
     public let height: Int
     public var pixels: [UInt8]

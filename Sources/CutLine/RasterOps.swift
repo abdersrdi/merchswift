@@ -1,12 +1,12 @@
 import Foundation
 
 /// Raster helpers for the cut line: exact distance transform, hole filling, component filtering, blur.
-enum RasterOps {
+public enum RasterOps {
     static let inf: Float = 1e20
 
     /// Squared Euclidean distance from every pixel to the nearest pixel where `sites` is true
     /// (Felzenszwalb and Huttenlocher, exact, linear time).
-    static func squaredDistance(sites: [Bool], width: Int, height: Int) -> [Float] {
+    public static func squaredDistance(sites: [Bool], width: Int, height: Int) -> [Float] {
         var f = [Float](repeating: 0, count: width * height)
         for i in 0..<f.count { f[i] = sites[i] ? 0 : inf }
 
@@ -57,7 +57,7 @@ enum RasterOps {
     }
 
     /// Grows the true pixels of `mask` by `radius` pixels (round structuring element).
-    static func dilate(_ mask: [Bool], width: Int, height: Int, radius: Double) -> [Bool] {
+    public static func dilate(_ mask: [Bool], width: Int, height: Int, radius: Double) -> [Bool] {
         if radius <= 0 { return mask }
         let d2 = squaredDistance(sites: mask, width: width, height: height)
         let r2 = Float(radius * radius)
@@ -65,7 +65,7 @@ enum RasterOps {
     }
 
     /// Shrinks the true pixels of `mask` by `radius` pixels.
-    static func erode(_ mask: [Bool], width: Int, height: Int, radius: Double) -> [Bool] {
+    public static func erode(_ mask: [Bool], width: Int, height: Int, radius: Double) -> [Bool] {
         if radius <= 0 { return mask }
         let d2 = squaredDistance(sites: mask.map { !$0 }, width: width, height: height)
         let r2 = Float(radius * radius)
