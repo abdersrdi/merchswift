@@ -59,9 +59,10 @@ final class DesignFileTests: XCTestCase {
 
     func testAMissingPictureFileStillOpensTheDesign() throws {
         let url = root.appendingPathComponent("a.merchswift")
-        try DesignPackage.write(design(), assets: ["top": png], to: url)           // "inside" has no data
+        let d = design()
+        try DesignPackage.write(d, assets: ["top": png], to: url)                  // "inside" has no data
         let back = try DesignPackage.read(from: url)
-        XCTAssertEqual(back.document, design())
+        XCTAssertEqual(back.document, d)
         XCTAssertNil(back.assets["inside"])
     }
 
