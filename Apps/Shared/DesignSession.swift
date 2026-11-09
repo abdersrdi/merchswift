@@ -2,6 +2,7 @@ import DesignFile
 import DocumentModel
 import Editor
 import Export
+import ExportKit
 import Foundation
 import ImageIO
 import ImageTools
@@ -14,6 +15,8 @@ final class DesignSession: ObservableObject {
     @Published private(set) var entries: [DesignEntry] = []
     @Published private(set) var status: String?
     @Published private(set) var busy = false
+    /// The file made by `exportCurrent`, ready to share.
+    @Published var exportURL: URL?
 
     private(set) var currentID: String
     private let library: DesignLibrary
@@ -70,11 +73,15 @@ final class DesignSession: ObservableObject {
         var fresh: [String: RGBAImage] = [:]
         for a in ids where !onDisk.contains(a) { if let px = assets.pixels(for: a) { fresh[a] = px } }
         let library = library
+        let provider = assets
         do {
             try await Task.detached(priority: .utility) {
                 var png: [String: Data] = [:]
                 for (k, v) in fresh { png[k] = PNGEncoder.encode(v) }
-                try library.save(doc, assets: png, id: id)
+                // A small preview for the list: the whole design, about 256 pixels on its longest side.
+                let longest = max(doc.size.width, doc.size.height, 1)
+                let thumbnail = try? PNGExporter.export(doc, assets: provider, dpi: 256 / longest * 25.4, dither: false)
+                try library.save(doc, assets: png, thumbnail: thumbnail, id: id)
             }.value
             onDisk = onDisk.intersection(ids).union(fresh.keys)
             savedRevision = revision
@@ -121,6 +128,52 @@ final class DesignSession: ObservableObject {
         } catch {
             status = "Could not delete: \(error)"
         }
+    }
+
+    /// The current design as one file to share or keep as a backup. Saves first so the file is up to date.
+    func exportCurrent() async {
+        saveTask?.cancel()
+        await saveNow()
+        let id = currentID
+        guard library.exists(id: id) else { status = "Nothing to export yet. Change the design first, then try again."; return }
+        let library = library
+        let name = Self.fileSafe(model.store.document.title)
+        busy = true
+        defer { busy = false }
+        do {
+            exportURL = try await Task.detached(priority: .userInitiated) {
+                let data = try library.exportData(id: id)
+                let url = FileManager.default.temporaryDirectory.appendingPathComponent("\(name).\(DesignPack.fileExtension)")
+                try data.write(to: url)
+                return url
+            }.value
+            status = nil
+        } catch {
+            status = "Could not make the file: \(error)"
+        }
+    }
+
+    /// Adds a design from a design file as a new design and opens it.
+    func importFile(_ url: URL) async {
+        let scoped = url.startAccessingSecurityScopedResource()
+        defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+        busy = true
+        let library = library
+        do {
+            let id = try await Task.detached(priority: .userInitiated) { try library.importData(try Data(contentsOf: url)) }.value
+            refresh()
+            busy = false
+            await open(id)
+        } catch {
+            busy = false
+            status = "\(error)"
+        }
+    }
+
+    private static func fileSafe(_ title: String) -> String {
+        let cleaned = title.map { "/\\:*?\"<>|".contains($0) ? "-" : $0 }
+        let s = String(cleaned).trimmingCharacters(in: .whitespacesAndNewlines)
+        return s.isEmpty ? "design" : s
     }
 
     func rename(to title: String) {

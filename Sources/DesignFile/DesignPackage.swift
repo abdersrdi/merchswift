@@ -33,6 +33,7 @@ public enum DesignPackage {
     public static let fileExtension = "merchswift"
     static let descriptionName = "design.json"
     static let assetsFolder = "assets"
+    public static let thumbnailName = "thumbnail.png"
 
     private struct Envelope: Codable {
         var format: Int
@@ -86,7 +87,7 @@ public enum DesignPackage {
     /// Writes the design. The new copy is built next to the old one and swapped in at the end, so a crash or a full disk
     /// in the middle never leaves a half-written design. `assets` holds PNG data by picture id; only pictures the design
     /// uses are written. A used picture that is not in `assets` is carried over from the earlier save, if there was one.
-    public static func write(_ document: Document, assets: [String: Data], modified: Date = Date(), to url: URL) throws {
+    public static func write(_ document: Document, assets: [String: Data], thumbnail: Data? = nil, modified: Date = Date(), to url: URL) throws {
         let fm = FileManager.default
         let parent = url.deletingLastPathComponent()
         try fm.createDirectory(at: parent, withIntermediateDirectories: true)
@@ -105,6 +106,11 @@ public enum DesignPackage {
                     let earlier = url.appendingPathComponent(assetsFolder).appendingPathComponent(name)
                     if fm.fileExists(atPath: earlier.path) { try fm.copyItem(at: earlier, to: target) }
                 }
+            }
+            if let thumbnail {
+                try thumbnail.write(to: temp.appendingPathComponent(thumbnailName))
+            } else if fm.fileExists(atPath: url.appendingPathComponent(thumbnailName).path) {
+                try fm.copyItem(at: url.appendingPathComponent(thumbnailName), to: temp.appendingPathComponent(thumbnailName))
             }
             if fm.fileExists(atPath: url.path) {
                 let old = parent.appendingPathComponent(".\(url.lastPathComponent).old-\(UUID().uuidString)")
