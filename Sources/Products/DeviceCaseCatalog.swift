@@ -89,8 +89,9 @@ public enum DeviceCaseCatalog {
         let trim = Size2(spec.width, spec.height)
         let zone = cameraZone(spec.camera, trim: trim)
         let isPhone = spec.kind == .phone
-        let inches = String(format: "%.1f × %.1f in", spec.height / 25.4, spec.width / 25.4)
-        let name = (isPhone ? "Phone case" : "Tablet case") + " · \(inches) · \(spec.camera.label)"
+        // Millimetres identify a device exactly (two can share the same size in inches); inches are for readability.
+        let size = String(format: "%.1f × %.1f mm (%.1f × %.1f in)", spec.height, spec.width, spec.height / 25.4, spec.width / 25.4)
+        let name = (isPhone ? "Phone case" : "Tablet case") + " · \(size) · \(spec.camera.label)"
         let id = "case-\(isPhone ? "p" : "t")-\(Int((spec.height * 10).rounded()))x\(Int((spec.width * 10).rounded()))-\(spec.camera.code)"
         return ProductPreset(
             id: id, name: name, kind: .deviceCase, trim: trim, bleed: bleed, safeInset: safeInset, dpi: 300,
