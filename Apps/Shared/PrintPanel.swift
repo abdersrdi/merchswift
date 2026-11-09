@@ -19,6 +19,10 @@ struct PrintPanel: View {
     @State private var message: String?
     @State private var watchingVideo = false
     @StateObject private var photos: PhotoEditor
+    @State private var marketID = MarketplaceCatalog.amazonMerchShirt.id
+    @State private var customWidth = "4500"
+    @State private var customHeight = "5400"
+    @State private var marketURL: URL?
     @ObservedObject private var policy = WatermarkPolicy.shared
     @ObservedObject private var ads = AdHooks.shared
 
@@ -79,6 +83,35 @@ struct PrintPanel: View {
                         } else {
                             Text("Pro removes it, and it will be available soon.").font(.caption).foregroundStyle(.secondary)
                         }
+                    }
+                }
+
+                Section("Upload to a selling site") {
+                    Picker("Site and product", selection: $marketID) {
+                        ForEach(MarketplaceCatalog.all) { Text($0.name).tag($0.id) }
+                        Text("Custom size").tag("custom")
+                    }
+                    if marketID == "custom" {
+                        HStack {
+                            TextField("Width px", text: $customWidth)
+                            Text("×")
+                            TextField("Height px", text: $customHeight)
+                        }
+                        #if os(iOS)
+                        .keyboardType(.numberPad)
+                        #endif
+                    }
+                    if let t = marketTarget {
+                        Text("\(t.pixelWidth) × \(t.pixelHeight) px, \(Int(t.dpi)) DPI, PNG\(t.transparentBackground ? ", transparent background" : "")\(t.maxFileMegabytes.map { ", up to \(Int($0)) MB" } ?? "")")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Text(t.note).font(.caption2).foregroundStyle(.secondary)
+                    }
+                    Button { exportMarketplace() } label: {
+                        if exporting { ProgressView() } else { Label("Export PNG for this site", systemImage: "square.and.arrow.up") }
+                    }
+                    .disabled(exporting || marketTarget == nil || !policy.canExport)
+                    if let url = marketURL {
+                        ShareLink(item: url) { Label("Share \(url.lastPathComponent)", systemImage: "square.and.arrow.up") }
                     }
                 }
 
@@ -162,6 +195,44 @@ struct PrintPanel: View {
                 } else {
                     Text("Pro removes the limit.").font(.footnote).foregroundStyle(.secondary)
                 }
+            }
+        }
+    }
+
+    /// The chosen site size, or the typed one. Nil when the typed numbers are not usable.
+    private var marketTarget: MarketplacePreset? {
+        if marketID == "custom" {
+            guard let w = Int(customWidth), let h = Int(customHeight), (100...13500).contains(w), (100...13500).contains(h) else { return nil }
+            return .custom(pixelWidth: w, pixelHeight: h)
+        }
+        return MarketplaceCatalog.preset(id: marketID)
+    }
+
+    /// Makes the PNG at the exact pixel size a selling site asks for. Counts as one export and follows the same free-plan
+    /// rules as the full export (a free export carries the mark unless a watched video earned a clean one).
+    private func exportMarketplace() {
+        guard let target = marketTarget else { return }
+        exporting = true
+        message = nil
+        marketURL = nil
+        let doc = model.store.document
+        let marked = policy.shouldWatermark
+        let mark: Layer? = marked ? Watermark.layer(for: Document(size: target.size, dpi: target.dpi), shaper: model.shaper) : nil
+        let usedVideo = !policy.isPro && policy.cleanExports > 0
+        Task.detached(priority: .userInitiated) {
+            do {
+                let file = try MarketplaceExport.export(doc, for: target, assets: AssetStore.shared, watermark: mark.map { m in { _ in m } })
+                let url = FileManager.default.temporaryDirectory.appendingPathComponent(file.name)
+                try file.data.write(to: url)
+                await MainActor.run {
+                    policy.exportFinished(wasClean: usedVideo)
+                    marketURL = url
+                    let size = ByteCountFormatter.string(fromByteCount: Int64(file.data.count), countStyle: .file)
+                    message = (["Ready: \(file.pixelWidth) × \(file.pixelHeight) px, \(size)"] + file.warnings).joined(separator: "\n")
+                    exporting = false
+                }
+            } catch {
+                await MainActor.run { message = "\(error)"; exporting = false }
             }
         }
     }
