@@ -60,6 +60,18 @@ final class MarketplacePresetTests: XCTestCase {
         XCTAssertGreaterThan(place.offsetY, 0)
     }
 
+    func testPhoneGripAndTeepublicSizes() {
+        XCTAssertEqual(MarketplaceCatalog.amazonPopSocket.pixelWidth, 485)
+        XCTAssertEqual(MarketplaceCatalog.amazonPopSocket.pixelHeight, 485)
+        XCTAssertEqual(MarketplaceCatalog.teepublicLarge.pixelWidth, 5000)
+        XCTAssertEqual(MarketplaceCatalog.teepublicLarge.pixelHeight, 5000)
+        XCTAssertEqual(MarketplaceCatalog.teepublicSmall.pixelWidth, 1500)
+        XCTAssertEqual(MarketplaceCatalog.teepublicSmall.pixelHeight, 1995)
+        // 485 px at 300 DPI is not a whole number of millimetres; the export still lands on exactly 485 px.
+        let p = MarketplaceCatalog.amazonPopSocket
+        XCTAssertEqual(Int((p.size.width * p.dpi / 25.4).rounded()), 485)
+    }
+
     func testCustomSizeIsUsable() {
         let c = MarketplacePreset.custom(pixelWidth: 3000, pixelHeight: 2000)
         XCTAssertEqual(c.pixelWidth, 3000)

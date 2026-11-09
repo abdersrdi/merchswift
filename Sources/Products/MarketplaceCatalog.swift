@@ -2,7 +2,7 @@ import Foundation
 
 /// The upload sizes the app can make files for. The figures come from public seller guides and help pages, not from each
 /// site's own rules, which change and sometimes differ by print provider. Each note tells the person to compare with the
-/// upload page. Where guides disagreed, the preset is left out (for example Amazon's phone grip) rather than guessed.
+/// upload page. Where guides disagreed, the preset is left out unless the app's owner gave the size.
 public enum MarketplaceCatalog {
     // MARK: Shirts and apparel
 
@@ -19,6 +19,19 @@ public enum MarketplaceCatalog {
     public static let redbubbleApparel = MarketplacePreset(
         id: "redbubble-large", name: "Redbubble · apparel, posters, phone cases (large upload)", pixelWidth: 6000, pixelHeight: 8000, maxFileMegabytes: 300,
         note: "Redbubble scales one large upload to every product. 6000 × 8000 is the starting size seller guides recommend, and the site accepts up to 13500 × 13500 and 300 MB. Compare with Redbubble's own help page.")
+
+    /// Amazon's phone grip. Seller guides disagreed (485 or 1876 px); this is the size given by the app's owner, who sells on Merch.
+    public static let amazonPopSocket = MarketplacePreset(
+        id: "amazon-popsocket", name: "Amazon Merch on Demand · phone grip", pixelWidth: 485, pixelHeight: 485, centerVertically: true,
+        note: "Transparent PNG, 485 × 485 px. Keep it simple, because fine detail gets lost on a small grip. Compare with the template in your Amazon account.")
+
+    public static let teepublicLarge = MarketplacePreset(
+        id: "teepublic-5000", name: "TeePublic · large square", pixelWidth: 5000, pixelHeight: 5000, centerVertically: true,
+        note: "TeePublic does not need one fixed size; a 5000 × 5000 transparent PNG is accepted. Compare with TeePublic's artist upload page.")
+
+    public static let teepublicSmall = MarketplacePreset(
+        id: "teepublic-1500", name: "TeePublic · 1500 × 1995", pixelWidth: 1500, pixelHeight: 1995, centerVertically: true,
+        note: "A smaller size TeePublic also accepts. Use the large one when you can, since a bigger file prints sharper.")
 
     // MARK: Stickers
 
@@ -50,6 +63,7 @@ public enum MarketplaceCatalog {
 
     public static let all: [MarketplacePreset] = [
         amazonMerchShirt, printOnDemandShirt, redbubbleApparel,
+        amazonPopSocket, teepublicLarge, teepublicSmall,
         redbubbleSticker, squareLargeSticker, squarePattern,
         redbubbleMug, printfulMug11, printifyMug11,
     ]
